@@ -1,0 +1,62 @@
+/* Optional developer QA. Start python -m restoreguard serve first.
+   Requires Playwright and Chrome; neither is a runtime dependency. */
+const { chromium } = require('playwright');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+(async () => {
+  const output = path.resolve('.test-output'); fs.mkdirSync(output, { recursive: true });
+  const browser = await chromium.launch({ channel: 'chrome', headless: true });
+  const checks = [], errors = [];
+  try {
+    const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+    page.on('pageerror', e => errors.push(String(e)));
+    await page.goto(process.env.RESTOREGUARD_URL || 'http://127.0.0.1:8766');
+    await page.getByText('Local lab connected', { exact: true }).waitFor();
+    await page.screenshot({ path: path.join(output, 'workbench-desktop.png'), fullPage: true });
+    checks.push('Workbench loads and retrieves live API configuration.');
+    await page.locator('#run-button').click();
+    await page.locator('#metric-failed').filter({ hasText: '19' }).waitFor({ timeout: 60000 });
+    assert.equal(await page.locator('#metric-passed').innerText(), '8');
+    assert.equal(await page.locator('#export-actions a').count(), 3);
+    await page.screenshot({ path: path.join(output, 'vulnerable-matrix.png'), fullPage: true });
+    checks.push('Full vulnerable matrix shows19 failures and8 passes with exports.');
+    await page.locator('#minimize-button').click();
+    await page.locator('#minimize-result').waitFor();
+    assert.match(await page.locator('#minimize-title').innerText(), /1/);
+    assert.match(await page.locator('#minimize-description').innerText(), /No single remaining restore operation/);
+    checks.push('Selected role failure reduces to one restore step.');
+    await page.locator('#show-table').click();
+    assert.equal(await page.locator('#matrix-body tr').count(), 27);
+    await page.locator('#status-filter').selectOption('PASS');
+    assert.equal(await page.locator('#matrix-body tr').count(), 8);
+    checks.push('Table and status filter show the matching matrix rows.');
+    await page.getByRole('tab', { name: /Scenario checks/ }).click();
+    await page.locator('#run-scenarios').click();
+    await page.locator('#scenario-results').waitFor();
+    assert.equal(await page.locator('.scenario-card').count(), 6);
+    assert.match(await page.locator('#scenario-description').innerText(), /6 of 6/);
+    checks.push('All6 scenario expectations pass through the browser.');
+    await page.getByRole('tab', { name: /Recovery matrix/ }).click();
+    await page.locator('#mode').selectOption('protected');
+    await page.locator('#run-button').click();
+    await page.locator('#metric-passed').filter({ hasText: '27' }).waitFor({ timeout: 60000 });
+    assert.equal(await page.locator('#run-status-pill').innerText(), 'PASS');
+    checks.push('Protected full matrix passes all27 combinations.');
+    await page.locator('#budget').fill('1');
+    await page.locator('#run-button').click();
+    await page.locator('#run-status-pill').filter({ hasText: 'INCOMPLETE' }).waitFor();
+    checks.push('Budget-limited clean run is shown as inconclusive.');
+    await page.getByRole('tab', { name: /Run archive/ }).click();
+    await page.locator('.archive-open').first().click();
+    await page.locator('#view-matrix').waitFor();
+    checks.push('Saved run opens from the archive.');
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.screenshot({ path: path.join(output, 'workbench-mobile.png'), fullPage: true });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
+    assert.deepEqual(errors, []);
+    checks.push('390px mobile viewport fits without page overflow or JavaScript errors.');
+    fs.writeFileSync(path.join(output, 'browser-results.json'), JSON.stringify({ status: 'PASS', checks, errors }, null, 2));
+    console.log(JSON.stringify({ status: 'PASS', checks, errors }, null, 2));
+  } finally { await browser.close(); }
+})().catch(error => { console.error(error); process.exitCode = 1; });

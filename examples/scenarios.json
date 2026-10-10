@@ -1,0 +1,72 @@
+{
+  "schema_version": "0.1-design",
+  "implementation_status": "specification_only_not_executable",
+  "runtime_support": "The local reference prototype uses a built-in scenario catalogue and does not execute these operation descriptions.",
+  "note": "These are synthetic fixture specifications, not demonstrated flaws in named products.",
+  "scenarios": [
+    {
+      "id": "RG-001",
+      "title": "Removed document role returns after old ACL restore",
+      "fixture": "toy_local_acl_vulnerable",
+      "security_intent": {"actor": "removed-user", "action": "read", "resource": "budget-demo", "after_event": "remove-role", "required_decision": "deny"},
+      "preconditions": ["removed-user read succeeds before revocation", "removed-user read denied after revocation", "allowed-user read succeeds"],
+      "operations": [{"type": "snapshot", "component": "permissions", "checkpoint": "A"}, {"type": "remove_role", "actor": "removed-user", "role": "document.viewer", "event_id": "remove-role"}, {"type": "snapshot", "component": "permissions", "checkpoint": "B"}, {"type": "restore", "component": "permissions", "checkpoint": "A"}, {"type": "probe", "probe_set": "both-users"}],
+      "probes": ["removed-user read budget-demo", "allowed-user read budget-demo"],
+      "expected_fixture_outcome": "FAIL",
+      "expected_kind": "revived_role"
+    },
+    {
+      "id": "RG-002",
+      "title": "External current policy blocks an old ACL",
+      "fixture": "toy_external_revocation_control",
+      "security_intent": {"actor": "removed-user", "action": "read", "resource": "budget-demo", "after_event": "remove-role", "required_decision": "deny"},
+      "preconditions": ["external policy journal available", "pre-restore denied probe succeeds"],
+      "operations": [{"type": "snapshot", "component": "permissions", "checkpoint": "A"}, {"type": "remove_role", "actor": "removed-user", "role": "document.viewer", "policy_source": "current-security-intent", "event_id": "remove-role"}, {"type": "restore", "component": "permissions", "checkpoint": "A"}, {"type": "probe", "probe_set": "both-users"}],
+      "probes": ["removed-user read budget-demo", "allowed-user read budget-demo"],
+      "expected_fixture_outcome": "PASS"
+    },
+    {
+      "id": "RG-003",
+      "title": "Revoked toy session returns after session-store restore",
+      "fixture": "toy_local_session_vulnerable",
+      "security_intent": {"actor": "session-owner", "action": "read", "resource": "budget-demo", "after_event": "revoke-session-S4", "required_decision": "deny"},
+      "preconditions": ["S4 has not expired", "S4 denied after explicit revocation"],
+      "operations": [{"type": "snapshot", "component": "identity", "checkpoint": "A"}, {"type": "revoke_session", "session": "S4", "event_id": "revoke-session-S4"}, {"type": "restore", "component": "identity", "checkpoint": "A"}, {"type": "probe", "probe_set": "session-and-allowed-user"}],
+      "probes": ["S4 read budget-demo", "allowed-user read budget-demo"],
+      "expected_fixture_outcome": "FAIL",
+      "expected_kind": "revived_session"
+    },
+    {
+      "id": "RG-004",
+      "title": "Independent policy evidence is unavailable",
+      "fixture": "toy_journal_unavailable",
+      "security_intent": {"actor": "removed-user", "action": "read", "resource": "budget-demo", "after_event": "remove-role", "required_decision": "deny"},
+      "preconditions": ["journal existed during setup"],
+      "operations": [{"type": "set_fixture_fault", "target": "current-security-intent", "fault": "unavailable"}, {"type": "probe", "probe_set": "current-policy"}],
+      "probes": ["current-policy lookup"],
+      "expected_fixture_outcome": "INCONCLUSIVE"
+    },
+    {
+      "id": "RG-005",
+      "title": "Stale service credential prevents legitimate access",
+      "fixture": "toy_rotated_secret_mismatch",
+      "security_intent": {"actor": "allowed-user", "action": "read", "resource": "budget-demo", "after_event": "rotate-service-secret", "required_decision": "allow"},
+      "preconditions": ["new service credential works"],
+      "operations": [{"type": "snapshot", "component": "secrets", "checkpoint": "A"}, {"type": "rotate_secret", "credential": "service-secret", "event_id": "rotate-service-secret"}, {"type": "probe", "probe_set": "allowed-user"}, {"type": "restore", "component": "secrets", "checkpoint": "A"}, {"type": "probe", "probe_set": "allowed-user"}],
+      "probes": ["allowed-user read budget-demo"],
+      "expected_fixture_outcome": "FAIL",
+      "expected_kind": "availability_regression"
+    },
+    {
+      "id": "RG-006",
+      "title": "Denial response conceals a completed protected effect",
+      "fixture": "toy_status_effect_disagreement",
+      "security_intent": {"actor": "removed-user", "action": "tag", "resource": "budget-demo", "after_event": "remove-role", "required_decision": "deny"},
+      "preconditions": ["synthetic tag absent before probe", "effect observer available"],
+      "operations": [{"type": "probe", "probe_set": "denied-tag-action"}, {"type": "observe_effects", "resource": "budget-demo"}],
+      "probes": ["removed-user tag budget-demo"],
+      "expected_fixture_outcome": "FAIL",
+      "expected_kind": "unauthorized_effect"
+    }
+  ]
+}

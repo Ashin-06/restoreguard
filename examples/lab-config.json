@@ -1,0 +1,36 @@
+{
+  "schema_version": "0.1-design",
+  "implementation_status": "specification_only_not_executable",
+  "runtime_support": "The local reference prototype does not load this file; this is a future adapter and scenario-language design.",
+  "project": "RestoreGuard",
+  "scenario_file": "scenarios.json",
+  "fixture_namespace": "restoreguard-fictional-lab",
+  "execution_mode": "isolated_local_fixture",
+  "clock_mode": "controlled_fixture",
+  "checkpoint_meanings": {"A": "before_security_change", "B": "after_verified_security_change", "C": "after_subsequent_benign_change_with_security_intent_unchanged"},
+  "outbound_network": "deny_except_declared_lab_peers",
+  "policy_journal": {
+    "id": "current-security-intent",
+    "included_in_restore_matrix": false,
+    "on_unavailable": "INCONCLUSIVE"
+  },
+  "components": [
+    {"id": "identity", "adapter": "toy_identity", "checkpoints": ["A", "B", "C"]},
+    {"id": "permissions", "adapter": "toy_permissions", "checkpoints": ["A", "B", "C"]},
+    {"id": "secrets", "adapter": "toy_secrets", "checkpoints": ["A", "B", "C"]}
+  ],
+  "matrix": {
+    "strategy": "exhaustive_checkpoint_selection",
+    "expected_combinations": 27,
+    "restore_order": ["identity", "permissions", "secrets"],
+    "other_restore_orders_covered": false
+  },
+  "probe_policy": {
+    "require_pre_restore_revocation_check": true,
+    "require_allowed_user_control": true,
+    "require_authoritative_effect": true,
+    "timeout_seconds": 10
+  },
+  "reduction": {"strategy": "greedy_step_removal", "claim": "locally_minimal_under_tested_removals"},
+  "evidence": {"include_raw_credentials": false, "include_synthetic_document_body": false, "hash_artifacts": true}
+}

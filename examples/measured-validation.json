@@ -1,0 +1,975 @@
+{
+  "vulnerable": {
+    "planned": 27,
+    "attempted": 27,
+    "passed": 8,
+    "failed": 19,
+    "inconclusive": 0,
+    "complete": true
+  },
+  "protected": {
+    "planned": 27,
+    "attempted": 27,
+    "passed": 27,
+    "failed": 0,
+    "inconclusive": 0,
+    "complete": true
+  },
+  "scenarios": {
+    "status": "PASS",
+    "summary": {
+      "total": 6,
+      "passed": 6,
+      "failed": 0
+    },
+    "results": [
+      {
+        "id": "RG-001",
+        "title": "Removed role returns",
+        "expected_outcome": "FAIL",
+        "observed_outcome": "FAIL",
+        "status": "PASS",
+        "expected_kind": "revived_role",
+        "observed_kinds": [
+          "revived_role"
+        ],
+        "inspection": {
+          "id": "I-C_P-A_S-C",
+          "selection": {
+            "identity": "C",
+            "permissions": "A",
+            "secrets": "C"
+          },
+          "mode": "vulnerable",
+          "status": "FAIL",
+          "observations": [
+            {
+              "actor": "removed-user",
+              "action": "read",
+              "resource": "budget-demo",
+              "expected": "deny",
+              "observed": "allowed",
+              "status": "FAIL",
+              "kind": "revived_role",
+              "transport_status": 200,
+              "effect_occurred": true,
+              "id": "role"
+            },
+            {
+              "actor": "disabled-user",
+              "action": "read",
+              "resource": "budget-demo",
+              "expected": "deny",
+              "observed": "denied",
+              "status": "PASS",
+              "kind": "revived_identity",
+              "transport_status": 403,
+              "effect_occurred": false,
+              "id": "disabled"
+            },
+            {
+              "actor": "session-owner",
+              "action": "read",
+              "resource": "budget-demo",
+              "expected": "deny",
+              "observed": "denied",
+              "status": "PASS",
+              "kind": "revived_session",
+              "transport_status": 403,
+              "effect_occurred": false,
+              "id": "session"
+            },
+            {
+              "actor": "allowed-user",
+              "action": "read",
+              "resource": "budget-demo",
+              "expected": "allow",
+              "observed": "allowed",
+              "status": "PASS",
+              "kind": "positive_control",
+              "transport_status": 200,
+              "effect_occurred": true,
+              "id": "allowed"
+            },
+            {
+              "actor": "old-secret-client",
+              "action": "old_secret_use",
+              "resource": "service-secret",
+              "expected": "deny",
+              "observed": "denied",
+              "status": "PASS",
+              "kind": "revived_secret",
+              "transport_status": 403,
+              "effect_occurred": false,
+              "id": "old-secret"
+            },
+            {
+              "actor": "allowed-user",
+              "action": "service_read",
+              "resource": "budget-demo",
+              "expected": "allow",
+              "observed": "allowed",
+              "status": "PASS",
+              "kind": "availability_regression",
+              "transport_status": 200,
+              "effect_occurred": true,
+              "id": "service"
+            }
+          ],
+          "findings": [
+            {
+              "kind": "revived_role",
+              "actor": "removed-user",
+              "action": "read",
+              "resource": "budget-demo",
+              "expected": "deny",
+              "observed": "allowed",
+              "transport_status": 200,
+              "effect_occurred": true
+            }
+          ],
+          "scope": "Synthetic local SQLite recovery-security fixture; no real product adapters",
+          "restore_order": [
+            "identity",
+            "permissions",
+            "secrets"
+          ],
+          "policy_journal_restored": false,
+          "baseline_verified": true,
+          "positive_control": true,
+          "restore_receipts": [
+            {
+              "component": "identity",
+              "checkpoint": "C",
+              "sha256": "a6fc9d448bfb8a8a5cb2bc93a0461ef3050ef4eee332c7ffbcd988c9f3c6a967"
+            },
+            {
+              "component": "permissions",
+              "checkpoint": "A",
+              "sha256": "495f26f97c839d455e5cb94dd8e718cf05fb94fce0ae2aad561b908811b97012"
+            },
+            {
+              "component": "secrets",
+              "checkpoint": "C",
+              "sha256": "bf1603d745c9f06d385b087fc5f383586e99b5ab3757629bc13a1f81b4bb681a"
+            }
+          ],
+          "baseline": {
+            "before_change": [
+              "PASS",
+              "PASS",
+              "PASS",
+              "PASS",
+              "PASS",
+              "PASS"
+            ],
+            "after_change": [
+              "PASS",
+              "PASS",
+              "PASS",
+              "PASS",
+              "PASS",
+              "PASS"
+            ],
+            "status": "PASS"
+          }
+        }
+      },
+      {
+        "id": "RG-002",
+        "title": "External current policy blocks old ACL",
+        "expected_outcome": "PASS",
+        "observed_outcome": "PASS",
+        "status": "PASS",
+        "expected_kind": null,
+        "observed_kinds": [],
+        "inspection": {
+          "id": "I-C_P-A_S-C",
+          "selection": {
+            "identity": "C",
+            "permissions": "A",
+            "secrets": "C"
+          },
+          "mode": "protected",
+          "status": "PASS",
+          "observations": [
+            {
+              "actor": "removed-user",
+              "action": "read",
+              "resource": "budget-demo",
+              "expected": "deny",
+              "observed": "denied",
+              "status": "PASS",
+              "kind": "revived_role",
+              "transport_status": 403,
+              "effect_occurred": false,
+              "id": "role"
+            },
+            {
+              "actor": "disabled-user",
+              "action": "read",
+              "resource": "budget-demo",
+              "expected": "deny",
+              "observed": "denied",
+              "status": "PASS",
+              "kind": "revived_identity",
+              "transport_status": 403,
+              "effect_occurred": false,
+              "id": "disabled"
+            },
+            {
+              "actor": "session-owner",
+              "action": "read",
+              "resource": "budget-demo",
+              "expected": "deny",
+              "observed": "denied",
+              "status": "PASS",
+              "kind": "revived_session",
+              "transport_status": 403,
+              "effect_occurred": false,
+              "id": "session"
+            },
+            {
+              "actor": "allowed-user",
+              "action": "read",
+              "resource": "budget-demo",
+              "expected": "allow",
+              "observed": "allowed",
+              "status": "PASS",
+              "kind": "positive_control",
+              "transport_status": 200,
+              "effect_occurred": true,
+              "id": "allowed"
+            },
+            {
+              "actor": "old-secret-client",
+              "action": "old_secret_use",
+              "resource": "service-secret",
+              "expected": "deny",
+              "observed": "denied",
+              "status": "PASS",
+              "kind": "revived_secret",
+              "transport_status": 403,
+              "effect_occurred": false,
+              "id": "old-secret"
+            },
+            {
+              "actor": "allowed-user",
+              "action": "service_read",
+              "resource": "budget-demo",
+              "expected": "allow",
+              "observed": "allowed",
+              "status": "PASS",
+              "kind": "availability_regression",
+              "transport_status": 200,
+              "effect_occurred": true,
+              "id": "service"
+            }
+          ],
+          "findings": [],
+          "scope": "Synthetic local SQLite recovery-security fixture; no real product adapters",
+          "restore_order": [
+            "identity",
+            "permissions",
+            "secrets"
+          ],
+          "policy_journal_restored": false,
+          "baseline_verified": true,
+          "positive_control": true,
+          "restore_receipts": [
+            {
+              "component": "identity",
+              "checkpoint": "C",
+              "sha256": "a6fc9d448bfb8a8a5cb2bc93a0461ef3050ef4eee332c7ffbcd988c9f3c6a967"
+            },
+            {
+              "component": "permissions",
+              "checkpoint": "A",
+              "sha256": "495f26f97c839d455e5cb94dd8e718cf05fb94fce0ae2aad561b908811b97012"
+            },
+            {
+              "component": "secrets",
+              "checkpoint": "C",
+              "sha256": "bf1603d745c9f06d385b087fc5f383586e99b5ab3757629bc13a1f81b4bb681a"
+            }
+          ],
+          "baseline": {
+            "before_change": [
+              "PASS",
+              "PASS",
+              "PASS",
+              "PASS",
+              "PASS",
+              "PASS"
+            ],
+            "after_change": [
+              "PASS",
+              "PASS",
+              "PASS",
+              "PASS",
+              "PASS",
+              "PASS"
+            ],
+            "status": "PASS"
+          }
+        }
+      },
+      {
+        "id": "RG-003",
+        "title": "Revoked session returns",
+        "expected_outcome": "FAIL",
+        "observed_outcome": "FAIL",
+        "status": "PASS",
+        "expected_kind": "revived_session",
+        "observed_kinds": [
+          "revived_identity",
+          "revived_session"
+        ],
+        "inspection": {
+          "id": "I-A_P-C_S-C",
+          "selection": {
+            "identity": "A",
+            "permissions": "C",
+            "secrets": "C"
+          },
+          "mode": "vulnerable",
+          "status": "FAIL",
+          "observations": [
+            {
+              "actor": "removed-user",
+              "action": "read",
+              "resource": "budget-demo",
+              "expected": "deny",
+              "observed": "denied",
+              "status": "PASS",
+              "kind": "revived_role",
+              "transport_status": 403,
+              "effect_occurred": false,
+              "id": "role"
+            },
+            {
+              "actor": "disabled-user",
+              "action": "read",
+              "resource": "budget-demo",
+              "expected": "deny",
+              "observed": "allowed",
+              "status": "FAIL",
+              "kind": "revived_identity",
+              "transport_status": 200,
+              "effect_occurred": true,
+              "id": "disabled"
+            },
+            {
+              "actor": "session-owner",
+              "action": "read",
+              "resource": "budget-demo",
+              "expected": "deny",
+              "observed": "allowed",
+              "status": "FAIL",
+              "kind": "revived_session",
+              "transport_status": 200,
+              "effect_occurred": true,
+              "id": "session"
+            },
+            {
+              "actor": "allowed-user",
+              "action": "read",
+              "resource": "budget-demo",
+              "expected": "allow",
+              "observed": "allowed",
+              "status": "PASS",
+              "kind": "positive_control",
+              "transport_status": 200,
+              "effect_occurred": true,
+              "id": "allowed"
+            },
+            {
+              "actor": "old-secret-client",
+              "action": "old_secret_use",
+              "resource": "service-secret",
+              "expected": "deny",
+              "observed": "denied",
+              "status": "PASS",
+              "kind": "revived_secret",
+              "transport_status": 403,
+              "effect_occurred": false,
+              "id": "old-secret"
+            },
+            {
+              "actor": "allowed-user",
+              "action": "service_read",
+              "resource": "budget-demo",
+              "expected": "allow",
+              "observed": "allowed",
+              "status": "PASS",
+              "kind": "availability_regression",
+              "transport_status": 200,
+              "effect_occurred": true,
+              "id": "service"
+            }
+          ],
+          "findings": [
+            {
+              "kind": "revived_identity",
+              "actor": "disabled-user",
+              "action": "read",
+              "resource": "budget-demo",
+              "expected": "deny",
+              "observed": "allowed",
+              "transport_status": 200,
+              "effect_occurred": true
+            },
+            {
+              "kind": "revived_session",
+              "actor": "session-owner",
+              "action": "read",
+              "resource": "budget-demo",
+              "expected": "deny",
+              "observed": "allowed",
+              "transport_status": 200,
+              "effect_occurred": true
+            }
+          ],
+          "scope": "Synthetic local SQLite recovery-security fixture; no real product adapters",
+          "restore_order": [
+            "identity",
+            "permissions",
+            "secrets"
+          ],
+          "policy_journal_restored": false,
+          "baseline_verified": true,
+          "positive_control": true,
+          "restore_receipts": [
+            {
+              "component": "identity",
+              "checkpoint": "A",
+              "sha256": "70cb2a0284773a1e5fb236932d6d435922a442568db814e028170d2f5f0da788"
+            },
+            {
+              "component": "permissions",
+              "checkpoint": "C",
+              "sha256": "ceb4a315fe7e5ee987f21ba59fb1cc2fb226863ae54bc50ca507ead6c897d045"
+            },
+            {
+              "component": "secrets",
+              "checkpoint": "C",
+              "sha256": "bf1603d745c9f06d385b087fc5f383586e99b5ab3757629bc13a1f81b4bb681a"
+            }
+          ],
+          "baseline": {
+            "before_change": [
+              "PASS",
+              "PASS",
+              "PASS",
+              "PASS",
+              "PASS",
+              "PASS"
+            ],
+            "after_change": [
+              "PASS",
+              "PASS",
+              "PASS",
+              "PASS",
+              "PASS",
+              "PASS"
+            ],
+            "status": "PASS"
+          }
+        }
+      },
+      {
+        "id": "RG-004",
+        "title": "Independent policy unavailable",
+        "expected_outcome": "INCONCLUSIVE",
+        "observed_outcome": "INCONCLUSIVE",
+        "status": "PASS",
+        "expected_kind": "policy_unavailable",
+        "observed_kinds": [
+          "policy_unavailable"
+        ],
+        "inspection": {
+          "id": "I-C_P-C_S-C",
+          "selection": {
+            "identity": "C",
+            "permissions": "C",
+            "secrets": "C"
+          },
+          "mode": "vulnerable",
+          "status": "INCONCLUSIVE",
+          "observations": [],
+          "findings": [
+            {
+              "kind": "policy_unavailable",
+              "actor": "policy-authority",
+              "message": "Independent current policy unavailable; no access conclusion is justified"
+            }
+          ],
+          "scope": "Synthetic local SQLite recovery-security fixture; no real product adapters",
+          "restore_order": [
+            "identity",
+            "permissions",
+            "secrets"
+          ],
+          "policy_journal_restored": false,
+          "baseline_verified": true,
+          "positive_control": false,
+          "restore_receipts": [],
+          "baseline": {
+            "before_change": [
+              "PASS",
+              "PASS",
+              "PASS",
+              "PASS",
+              "PASS",
+              "PASS"
+            ],
+            "after_change": [
+              "PASS",
+              "PASS",
+              "PASS",
+              "PASS",
+              "PASS",
+              "PASS"
+            ],
+            "status": "PASS"
+          }
+        }
+      },
+      {
+        "id": "RG-005",
+        "title": "Stale client credential blocks legitimate service read",
+        "expected_outcome": "FAIL",
+        "observed_outcome": "FAIL",
+        "status": "PASS",
+        "expected_kind": "availability_regression",
+        "observed_kinds": [
+          "availability_regression",
+          "revived_secret"
+        ],
+        "inspection": {
+          "id": "I-C_P-C_S-A",
+          "selection": {
+            "identity": "C",
+            "permissions": "C",
+            "secrets": "A"
+          },
+          "mode": "vulnerable",
+          "status": "FAIL",
+          "observations": [
+            {
+              "actor": "removed-user",
+              "action": "read",
+              "resource": "budget-demo",
+              "expected": "deny",
+              "observed": "denied",
+              "status": "PASS",
+              "kind": "revived_role",
+              "transport_status": 403,
+              "effect_occurred": false,
+              "id": "role"
+            },
+            {
+              "actor": "disabled-user",
+              "action": "read",
+              "resource": "budget-demo",
+              "expected": "deny",
+              "observed": "denied",
+              "status": "PASS",
+              "kind": "revived_identity",
+              "transport_status": 403,
+              "effect_occurred": false,
+              "id": "disabled"
+            },
+            {
+              "actor": "session-owner",
+              "action": "read",
+              "resource": "budget-demo",
+              "expected": "deny",
+              "observed": "denied",
+              "status": "PASS",
+              "kind": "revived_session",
+              "transport_status": 403,
+              "effect_occurred": false,
+              "id": "session"
+            },
+            {
+              "actor": "allowed-user",
+              "action": "read",
+              "resource": "budget-demo",
+              "expected": "allow",
+              "observed": "allowed",
+              "status": "PASS",
+              "kind": "positive_control",
+              "transport_status": 200,
+              "effect_occurred": true,
+              "id": "allowed"
+            },
+            {
+              "actor": "old-secret-client",
+              "action": "old_secret_use",
+              "resource": "service-secret",
+              "expected": "deny",
+              "observed": "allowed",
+              "status": "FAIL",
+              "kind": "revived_secret",
+              "transport_status": 200,
+              "effect_occurred": true,
+              "id": "old-secret"
+            },
+            {
+              "actor": "allowed-user",
+              "action": "service_read",
+              "resource": "budget-demo",
+              "expected": "allow",
+              "observed": "denied",
+              "status": "FAIL",
+              "kind": "availability_regression",
+              "transport_status": 503,
+              "effect_occurred": false,
+              "id": "service"
+            }
+          ],
+          "findings": [
+            {
+              "kind": "revived_secret",
+              "actor": "old-secret-client",
+              "action": "old_secret_use",
+              "resource": "service-secret",
+              "expected": "deny",
+              "observed": "allowed",
+              "transport_status": 200,
+              "effect_occurred": true
+            },
+            {
+              "kind": "availability_regression",
+              "actor": "allowed-user",
+              "action": "service_read",
+              "resource": "budget-demo",
+              "expected": "allow",
+              "observed": "denied",
+              "transport_status": 503,
+              "effect_occurred": false
+            }
+          ],
+          "scope": "Synthetic local SQLite recovery-security fixture; no real product adapters",
+          "restore_order": [
+            "identity",
+            "permissions",
+            "secrets"
+          ],
+          "policy_journal_restored": false,
+          "baseline_verified": true,
+          "positive_control": true,
+          "restore_receipts": [
+            {
+              "component": "identity",
+              "checkpoint": "C",
+              "sha256": "a6fc9d448bfb8a8a5cb2bc93a0461ef3050ef4eee332c7ffbcd988c9f3c6a967"
+            },
+            {
+              "component": "permissions",
+              "checkpoint": "C",
+              "sha256": "ceb4a315fe7e5ee987f21ba59fb1cc2fb226863ae54bc50ca507ead6c897d045"
+            },
+            {
+              "component": "secrets",
+              "checkpoint": "A",
+              "sha256": "1ab62f6f87f61ef7256cf1ca0247ec4005922ca53b6495397edaa89060f2b0f7"
+            }
+          ],
+          "baseline": {
+            "before_change": [
+              "PASS",
+              "PASS",
+              "PASS",
+              "PASS",
+              "PASS",
+              "PASS"
+            ],
+            "after_change": [
+              "PASS",
+              "PASS",
+              "PASS",
+              "PASS",
+              "PASS",
+              "PASS"
+            ],
+            "status": "PASS"
+          }
+        }
+      },
+      {
+        "id": "RG-006",
+        "title": "Denial response conceals completed mutation",
+        "expected_outcome": "FAIL",
+        "observed_outcome": "FAIL",
+        "status": "PASS",
+        "expected_kind": "unauthorized_effect",
+        "observed_kinds": [
+          "unauthorized_effect"
+        ],
+        "inspection": {
+          "id": "I-C_P-C_S-C",
+          "selection": {
+            "identity": "C",
+            "permissions": "C",
+            "secrets": "C"
+          },
+          "mode": "vulnerable",
+          "status": "FAIL",
+          "observations": [
+            {
+              "actor": "removed-user",
+              "action": "read",
+              "resource": "budget-demo",
+              "expected": "deny",
+              "observed": "denied",
+              "status": "PASS",
+              "kind": "revived_role",
+              "transport_status": 403,
+              "effect_occurred": false,
+              "id": "role"
+            },
+            {
+              "actor": "disabled-user",
+              "action": "read",
+              "resource": "budget-demo",
+              "expected": "deny",
+              "observed": "denied",
+              "status": "PASS",
+              "kind": "revived_identity",
+              "transport_status": 403,
+              "effect_occurred": false,
+              "id": "disabled"
+            },
+            {
+              "actor": "session-owner",
+              "action": "read",
+              "resource": "budget-demo",
+              "expected": "deny",
+              "observed": "denied",
+              "status": "PASS",
+              "kind": "revived_session",
+              "transport_status": 403,
+              "effect_occurred": false,
+              "id": "session"
+            },
+            {
+              "actor": "allowed-user",
+              "action": "read",
+              "resource": "budget-demo",
+              "expected": "allow",
+              "observed": "allowed",
+              "status": "PASS",
+              "kind": "positive_control",
+              "transport_status": 200,
+              "effect_occurred": true,
+              "id": "allowed"
+            },
+            {
+              "actor": "old-secret-client",
+              "action": "old_secret_use",
+              "resource": "service-secret",
+              "expected": "deny",
+              "observed": "denied",
+              "status": "PASS",
+              "kind": "revived_secret",
+              "transport_status": 403,
+              "effect_occurred": false,
+              "id": "old-secret"
+            },
+            {
+              "actor": "allowed-user",
+              "action": "service_read",
+              "resource": "budget-demo",
+              "expected": "allow",
+              "observed": "allowed",
+              "status": "PASS",
+              "kind": "availability_regression",
+              "transport_status": 200,
+              "effect_occurred": true,
+              "id": "service"
+            },
+            {
+              "actor": "removed-user",
+              "action": "tag",
+              "resource": "budget-demo",
+              "expected": "deny",
+              "observed": "allowed",
+              "status": "FAIL",
+              "kind": "unauthorized_effect",
+              "transport_status": 403,
+              "effect_occurred": true,
+              "id": "tag"
+            }
+          ],
+          "findings": [
+            {
+              "kind": "unauthorized_effect",
+              "actor": "removed-user",
+              "action": "tag",
+              "resource": "budget-demo",
+              "expected": "deny",
+              "observed": "allowed",
+              "transport_status": 403,
+              "effect_occurred": true
+            }
+          ],
+          "scope": "Synthetic local SQLite recovery-security fixture; no real product adapters",
+          "restore_order": [
+            "identity",
+            "permissions",
+            "secrets"
+          ],
+          "policy_journal_restored": false,
+          "baseline_verified": true,
+          "positive_control": true,
+          "restore_receipts": [
+            {
+              "component": "identity",
+              "checkpoint": "C",
+              "sha256": "a6fc9d448bfb8a8a5cb2bc93a0461ef3050ef4eee332c7ffbcd988c9f3c6a967"
+            },
+            {
+              "component": "permissions",
+              "checkpoint": "C",
+              "sha256": "ceb4a315fe7e5ee987f21ba59fb1cc2fb226863ae54bc50ca507ead6c897d045"
+            },
+            {
+              "component": "secrets",
+              "checkpoint": "C",
+              "sha256": "bf1603d745c9f06d385b087fc5f383586e99b5ab3757629bc13a1f81b4bb681a"
+            }
+          ],
+          "baseline": {
+            "before_change": [
+              "PASS",
+              "PASS",
+              "PASS",
+              "PASS",
+              "PASS",
+              "PASS"
+            ],
+            "after_change": [
+              "PASS",
+              "PASS",
+              "PASS",
+              "PASS",
+              "PASS",
+              "PASS"
+            ],
+            "status": "PASS"
+          }
+        }
+      }
+    ],
+    "scope": "Synthetic local SQLite recovery-security fixture; no real product adapters",
+    "interpretation": "PASS means the observed experiment outcome matched the documented expectation, including intentionally unsafe and inconclusive scenarios."
+  },
+  "reduction": {
+    "status": "FAIL",
+    "mode": "vulnerable",
+    "original_selection": {
+      "identity": "A",
+      "permissions": "A",
+      "secrets": "A"
+    },
+    "minimized_selection": {
+      "identity": "C",
+      "permissions": "A",
+      "secrets": "C"
+    },
+    "original_steps": 3,
+    "minimized_steps": 1,
+    "one_minimal": true,
+    "evaluations": 12,
+    "max_evaluations": 100,
+    "budget_exhausted": false,
+    "history": [
+      {
+        "phase": "baseline target",
+        "selection": {
+          "identity": "A",
+          "permissions": "A",
+          "secrets": "A"
+        },
+        "status": "FAIL",
+        "signature": "revived_role:removed-user",
+        "evaluations": 2
+      },
+      {
+        "phase": "clean baseline",
+        "selection": {
+          "identity": "C",
+          "permissions": "C",
+          "secrets": "C"
+        },
+        "status": "PASS",
+        "signature": null,
+        "evaluations": 4
+      },
+      {
+        "phase": "single restore removal",
+        "selection": {
+          "identity": "C",
+          "permissions": "A",
+          "secrets": "A"
+        },
+        "status": "FAIL",
+        "signature": "revived_role:removed-user",
+        "evaluations": 6,
+        "accepted": true
+      },
+      {
+        "phase": "single restore removal",
+        "selection": {
+          "identity": "C",
+          "permissions": "C",
+          "secrets": "A"
+        },
+        "status": "FAIL",
+        "signature": null,
+        "evaluations": 8,
+        "accepted": false
+      },
+      {
+        "phase": "single restore removal",
+        "selection": {
+          "identity": "C",
+          "permissions": "A",
+          "secrets": "C"
+        },
+        "status": "FAIL",
+        "signature": "revived_role:removed-user",
+        "evaluations": 10,
+        "accepted": true
+      },
+      {
+        "phase": "single restore removal",
+        "selection": {
+          "identity": "C",
+          "permissions": "C",
+          "secrets": "C"
+        },
+        "status": "PASS",
+        "signature": null,
+        "evaluations": 12,
+        "accepted": false
+      }
+    ],
+    "signature": "revived_role:removed-user",
+    "target_kind": "revived_role",
+    "target_actor": "removed-user",
+    "repeats": 2,
+    "limitations": [
+      "Only the controlled SQLite reference fixture is exercised; no Keycloak, Vault, cloud, or production system is tested.",
+      "The 27 combinations cover checkpoint selection in one fixed identity/permissions/secrets restore order, not order permutations.",
+      "Sessions are opaque fixture references under a fixed lab clock; no JWT, cryptography, network, expiry, or distributed consistency behavior is claimed.",
+      "Authorization and secret probes run independently so a stale service credential cannot hide a restored role or session.",
+      "Protection depends on an available external revocation authority and secret reconciliation; that authority is outside the restore set.",
+      "Disposable fixture databases use memory journals and disabled durability syncing for speed; crash durability is not tested.",
+      "1-minimal only under replacing a remaining restore checkpoint with C; not a globally shortest recipe."
+    ],
+    "scope": "Synthetic local SQLite recovery-security fixture; no real product adapters"
+  }
+}

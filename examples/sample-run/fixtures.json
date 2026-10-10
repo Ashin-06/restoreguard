@@ -1,0 +1,128 @@
+{
+  "scope": "Synthetic local SQLite recovery-security fixture; no real product adapters",
+  "baseline": {
+    "before_change": [
+      "PASS",
+      "PASS",
+      "PASS",
+      "PASS",
+      "PASS",
+      "PASS"
+    ],
+    "after_change": [
+      "PASS",
+      "PASS",
+      "PASS",
+      "PASS",
+      "PASS",
+      "PASS"
+    ],
+    "status": "PASS"
+  },
+  "artifacts": [
+    {
+      "path": "active/identity.sqlite",
+      "sha256": "a6fc9d448bfb8a8a5cb2bc93a0461ef3050ef4eee332c7ffbcd988c9f3c6a967",
+      "bytes": 20480,
+      "included_in_restore_matrix": false
+    },
+    {
+      "path": "active/permissions.sqlite",
+      "sha256": "ceb4a315fe7e5ee987f21ba59fb1cc2fb226863ae54bc50ca507ead6c897d045",
+      "bytes": 12288,
+      "included_in_restore_matrix": false
+    },
+    {
+      "path": "active/secrets.sqlite",
+      "sha256": "bf1603d745c9f06d385b087fc5f383586e99b5ab3757629bc13a1f81b4bb681a",
+      "bytes": 12288,
+      "included_in_restore_matrix": false
+    },
+    {
+      "path": "authoritative-effects.sqlite",
+      "sha256": "36fadd300fa64491a0df00c0fa8f1f1377046aeebb879548366b8769b5708e2f",
+      "bytes": 12288,
+      "included_in_restore_matrix": false
+    },
+    {
+      "path": "independent-policy.sqlite",
+      "sha256": "eeb0fb582b6340ed3464ac5e54c0406ce26d04cc49e55ecf4eeaa49253b6075e",
+      "bytes": 45056,
+      "included_in_restore_matrix": false
+    },
+    {
+      "path": "snapshots/A/identity.sqlite",
+      "sha256": "70cb2a0284773a1e5fb236932d6d435922a442568db814e028170d2f5f0da788",
+      "bytes": 20480,
+      "included_in_restore_matrix": true
+    },
+    {
+      "path": "snapshots/A/permissions.sqlite",
+      "sha256": "495f26f97c839d455e5cb94dd8e718cf05fb94fce0ae2aad561b908811b97012",
+      "bytes": 12288,
+      "included_in_restore_matrix": true
+    },
+    {
+      "path": "snapshots/A/secrets.sqlite",
+      "sha256": "1ab62f6f87f61ef7256cf1ca0247ec4005922ca53b6495397edaa89060f2b0f7",
+      "bytes": 12288,
+      "included_in_restore_matrix": true
+    },
+    {
+      "path": "snapshots/B/identity.sqlite",
+      "sha256": "71e1906b228562bcc204e8ab105959bdd64d7f645a9aa8b64be9e82ab624b8bd",
+      "bytes": 20480,
+      "included_in_restore_matrix": true
+    },
+    {
+      "path": "snapshots/B/permissions.sqlite",
+      "sha256": "0d367eae2224867a7615ca323ced2b085b2d86e3dcb9d808873b42a3c700f87f",
+      "bytes": 12288,
+      "included_in_restore_matrix": true
+    },
+    {
+      "path": "snapshots/B/secrets.sqlite",
+      "sha256": "860ed3f04dbba023a2b1f31d9ec54720b47579f4b7e86b66c1629b77f69c65ca",
+      "bytes": 12288,
+      "included_in_restore_matrix": true
+    },
+    {
+      "path": "snapshots/C/identity.sqlite",
+      "sha256": "a6fc9d448bfb8a8a5cb2bc93a0461ef3050ef4eee332c7ffbcd988c9f3c6a967",
+      "bytes": 20480,
+      "included_in_restore_matrix": true
+    },
+    {
+      "path": "snapshots/C/permissions.sqlite",
+      "sha256": "ceb4a315fe7e5ee987f21ba59fb1cc2fb226863ae54bc50ca507ead6c897d045",
+      "bytes": 12288,
+      "included_in_restore_matrix": true
+    },
+    {
+      "path": "snapshots/C/secrets.sqlite",
+      "sha256": "bf1603d745c9f06d385b087fc5f383586e99b5ab3757629bc13a1f81b4bb681a",
+      "bytes": 12288,
+      "included_in_restore_matrix": true
+    }
+  ],
+  "checkpoint_meanings": {
+    "A": "before security changes",
+    "B": "after verified security changes",
+    "C": "after subsequent benign changes"
+  },
+  "policy_journal": "independent-policy.sqlite",
+  "policy_journal_restored": false,
+  "restore_order": [
+    "identity",
+    "permissions",
+    "secrets"
+  ],
+  "limitations": [
+    "Only the controlled SQLite reference fixture is exercised; no Keycloak, Vault, cloud, or production system is tested.",
+    "The 27 combinations cover checkpoint selection in one fixed identity/permissions/secrets restore order, not order permutations.",
+    "Sessions are opaque fixture references under a fixed lab clock; no JWT, cryptography, network, expiry, or distributed consistency behavior is claimed.",
+    "Authorization and secret probes run independently so a stale service credential cannot hide a restored role or session.",
+    "Protection depends on an available external revocation authority and secret reconciliation; that authority is outside the restore set.",
+    "Disposable fixture databases use memory journals and disabled durability syncing for speed; crash durability is not tested."
+  ]
+}

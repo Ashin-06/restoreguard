@@ -1,0 +1,24 @@
+{
+  "algorithm": "sha256",
+  "case_id": "20261010T114919Z-fa7f59590b",
+  "tool_version": "1.0.0",
+  "files": {
+    "case.json": "657cc379934bfa22ba40d726ab00260f1ff6135753f60c01fb0f5c2743f8e7fd",
+    "fixtures/active/identity.sqlite": "a6fc9d448bfb8a8a5cb2bc93a0461ef3050ef4eee332c7ffbcd988c9f3c6a967",
+    "fixtures/active/permissions.sqlite": "ceb4a315fe7e5ee987f21ba59fb1cc2fb226863ae54bc50ca507ead6c897d045",
+    "fixtures/active/secrets.sqlite": "bf1603d745c9f06d385b087fc5f383586e99b5ab3757629bc13a1f81b4bb681a",
+    "fixtures/authoritative-effects.sqlite": "36fadd300fa64491a0df00c0fa8f1f1377046aeebb879548366b8769b5708e2f",
+    "fixtures/independent-policy.sqlite": "eeb0fb582b6340ed3464ac5e54c0406ce26d04cc49e55ecf4eeaa49253b6075e",
+    "fixtures/snapshots/A/identity.sqlite": "70cb2a0284773a1e5fb236932d6d435922a442568db814e028170d2f5f0da788",
+    "fixtures/snapshots/A/permissions.sqlite": "495f26f97c839d455e5cb94dd8e718cf05fb94fce0ae2aad561b908811b97012",
+    "fixtures/snapshots/A/secrets.sqlite": "1ab62f6f87f61ef7256cf1ca0247ec4005922ca53b6495397edaa89060f2b0f7",
+    "fixtures/snapshots/B/identity.sqlite": "71e1906b228562bcc204e8ab105959bdd64d7f645a9aa8b64be9e82ab624b8bd",
+    "fixtures/snapshots/B/permissions.sqlite": "0d367eae2224867a7615ca323ced2b085b2d86e3dcb9d808873b42a3c700f87f",
+    "fixtures/snapshots/B/secrets.sqlite": "860ed3f04dbba023a2b1f31d9ec54720b47579f4b7e86b66c1629b77f69c65ca",
+    "fixtures/snapshots/C/identity.sqlite": "a6fc9d448bfb8a8a5cb2bc93a0461ef3050ef4eee332c7ffbcd988c9f3c6a967",
+    "fixtures/snapshots/C/permissions.sqlite": "ceb4a315fe7e5ee987f21ba59fb1cc2fb226863ae54bc50ca507ead6c897d045",
+    "fixtures/snapshots/C/secrets.sqlite": "bf1603d745c9f06d385b087fc5f383586e99b5ab3757629bc13a1f81b4bb681a",
+    "fixtures.json": "8c55d636fc982dbf48df235ee1e868130f8951cea167572774546e85f295ec6b",
+    "report.html": "40b38b20a94eff7d7ab508150dadd3fddbf7610c3a6416530f60c60275ba29f7"
+  }
+}
