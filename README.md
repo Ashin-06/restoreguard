@@ -51,6 +51,10 @@ python -m restoreguard verify runs/<printed-run-id>
 
 `<printed-run-id>` is a placeholder; replace it with the actual directory name.
 
+Export a verified run with `python -m restoreguard bundle runs/<printed-run-id> --output evidence.zip`. Keep the ZIP outside the run directory. Each saved run contains `case.json`, `report.html`, `fixtures.json`, the SQLite fixture files, and `manifest.json`.
+
+Verdict commands return exit code **0** for PASS, **1** for FAIL, and **2** for INCONCLUSIVE or invalid input. A vulnerable matrix intentionally returns 1 even when its evidence was saved successfully.
+
 ## Read results correctly
 
 An experiment's `FAIL` means the tester found a seeded security or availability regression. It is a successful detection, not necessarily a program error.
@@ -63,7 +67,7 @@ An incomplete matrix or unavailable evidence cannot establish a clean result. In
 
 There are no production adapters, real JWT or cryptographic validation, distributed-system timing tests, restore-order permutations, arbitrary uploaded backup support, or production remediation. Sessions and keys are synthetic fixture values. SQLite durability syncing is disabled in disposable experiment stores, so crash recovery is not being measured.
 
-The files under `examples/` are retained **design specifications** for a future configuration/scenario language. The current runner uses a built-in catalogue and does not load those files. See [INTEGRATION_ROADMAP.md](INTEGRATION_ROADMAP.md) for the preserved Keycloak/Vault/Docker design.
+`examples/lab-config.json` and `examples/scenarios.json` are retained **design specifications** for a future configuration/scenario language. The current runner uses a built-in catalogue and does not load those two files. `examples/measured-validation.json` and `examples/sample-run/` contain actual generated reference results. See [INTEGRATION_ROADMAP.md](INTEGRATION_ROADMAP.md) for the preserved Keycloak/Vault/Docker design.
 
 ## Project guide
 
@@ -73,6 +77,7 @@ The files under `examples/` are retained **design specifications** for a future 
 | [WORKFLOW.md](WORKFLOW.md) | A complete recovery experiment and interpretation |
 | [DATA_CONTRACTS.md](DATA_CONTRACTS.md) | Runtime result fields and design-only example inputs |
 | [EVALUATION.md](EVALUATION.md) | Reproducible checks, expected scenarios, and coverage limits |
+| [VALIDATION.md](VALIDATION.md) | Recorded Python/browser checks and generated sample results |
 | [REQUIREMENTS.md](REQUIREMENTS.md) | Runtime requirements and current capability boundary |
 | [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) | Delivered reference scope and future milestones |
 | [SECURITY_SCOPE.md](SECURITY_SCOPE.md) | Local fixture scope, sensitive artifacts, and limitations |

@@ -38,6 +38,33 @@ Every inspected selection builds a fresh temporary fixture. All SQLite connectio
 
 ## Code responsibilities
 
+```text
+restoreguard/
+  core.py          SQLite fixtures, restore matrix, oracle, reducer, scenarios
+  evidence.py      Atomic run storage, manifests, verification, ZIP export
+  reports.py       Escaped portable HTML report
+  server.py        Loopback HTTP API, request limits, static interface
+  cli.py           Command-line workflows and verdict exit codes
+  __main__.py      python -m restoreguard entry point
+  __init__.py      Version identifier
+  static/
+    index.html     Workbench, scenario checks and archive views
+    styles.css     Responsive visual design
+    app.js         API interactions, matrix exploration and evidence controls
+tests/
+  test_core.py         Fixture and security-oracle regression checks
+  test_integration.py  CLI, HTTP and evidence lifecycle checks
+  browser_smoke.cjs    Optional Chrome/Playwright interface checks
+examples/
+  sample-run/              Generated run and deterministic SQLite inputs
+  measured-validation.json Actual matrix, scenario and reduction results
+  lab-config.json          Future declarative-input specification
+  scenarios.json           Future declarative-input specification
+Start-RestoreGuard.ps1      Foreground Windows launcher
+pyproject.toml             Optional package metadata; no runtime dependencies
+runs/                      Generated local evidence, excluded from Git
+```
+
 The core is in `restoreguard/core.py`:
 
 | Interface | Responsibility |
