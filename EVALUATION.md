@@ -66,4 +66,10 @@ Broader recall and false-alarm claims require a separately defined set of indepe
 
 ## External validity
 
-The tests cover synthetic local SQLite authorization and secret-state behavior. They do not test Keycloak, Vault, cloud services, real sessions or keys, asynchronous work, network failure, restore-order permutations, or crash durability. A clean protected matrix is conditional on an available current external authority and its implemented reconciliation behavior.
+The reference tests cover synthetic SQLite authorization and secret state. A clean protected matrix depends on available current authority and reconciliation. Separate native tests cover actual OpenBao service-token reads across two Raft checkpoints. Neither establishes Keycloak, HashiCorp Vault, cloud, HA, expiry, asynchronous consumers, network failures, restore-order permutations or crash durability.
+
+## Native integration checks
+
+Follow [OPENBAO_INTEGRATION.md](OPENBAO_INTEGRATION.md) to supply the verified binary, run the executable catalogue and enable the real integration test. Each repetition verifies both tokens initially, then revocation plus legitimate access before the second snapshot. Every restore must pass its checkpoint barrier and both probes.
+
+The catalogue expects the earlier snapshot to produce a security FAIL and the later snapshot to PASS. Publish expectation-match `status`, actual `security_status`, per-scenario outcomes, controls, runtime version/hash and fresh-instance count separately. Two chosen native states do not establish accuracy or performance. Keep native snapshots private; share the sanitized summary.

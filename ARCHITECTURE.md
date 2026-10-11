@@ -1,6 +1,6 @@
 # Architecture — local reference implementation
 
-RestoreGuard uses disposable SQLite databases to make a recovery-security failure observable and repeatable. The application is deliberately small enough that its expected security intent and actual protected effects can be inspected.
+RestoreGuard has two separate paths: a disposable SQLite reference matrix and a native OpenBao Raft adapter. Both keep test-defined current intent outside restored data and observe legitimate access separately. The browser exposes the SQLite path; the native path uses CLI commands and standalone reports.
 
 ## Actual experiment stores
 
@@ -41,6 +41,7 @@ Every inspected selection builds a fresh temporary fixture. All SQLite connectio
 ```text
 restoreguard/
   core.py          SQLite fixtures, restore matrix, oracle, reducer, scenarios
+  openbao.py       Owned native process, strict scenarios, Raft restores, probes, evidence
   evidence.py      Atomic run storage, manifests, verification, ZIP export
   reports.py       Escaped portable HTML report
   server.py        Loopback HTTP API, request limits, static interface
@@ -54,15 +55,19 @@ restoreguard/
 tests/
   test_core.py         Fixture and security-oracle regression checks
   test_integration.py  CLI, HTTP and evidence lifecycle checks
+  test_openbao.py      Native adapter errors, controls and optional real-service test
   browser_smoke.cjs    Optional Chrome/Playwright interface checks
 examples/
   sample-run/              Generated run and deterministic SQLite inputs
   measured-validation.json Actual matrix, scenario and reduction results
   lab-config.json          Future declarative-input specification
   scenarios.json           Future declarative-input specification
+  openbao-local.json       Executable bounded native OpenBao scenarios
+  openbao-validation.json  Sanitized recorded native result
 Start-RestoreGuard.ps1      Foreground Windows launcher
 pyproject.toml             Optional package metadata; no runtime dependencies
 runs/                      Generated local evidence, excluded from Git
+service-runs/              Private native evidence and snapshots, excluded from Git
 ```
 
 The core is in `restoreguard/core.py`:
@@ -78,7 +83,13 @@ The core is in `restoreguard/core.py`:
 
 The entry point `restoreguard/__main__.py` dispatches to the command-line module. The local server and evidence modules expose the same experiment results rather than inventing a separate browser-only simulation. See the current repository tree for supporting server and static-interface files.
 
-The earlier proposed large adapter tree is retained in [INTEGRATION_ROADMAP.md](INTEGRATION_ROADMAP.md); those adapters are not implemented.
+The earlier large adapter tree is retained in [INTEGRATION_ROADMAP.md](INTEGRATION_ROADMAP.md). The implemented native adapter lives in `restoreguard/openbao.py`, without pretending that larger framework exists.
+
+## Native OpenBao path
+
+`load_config` rejects unknown fields and unbounded input. `run_openbao` verifies the executable version, owns a fresh process per repetition, and preserves native evidence. `OwnedOpenBao` manages initialization/unseal, direct HTTP calls, native Raft snapshots, checkpoint-marker restore barriers, and cleanup. `classify_read` requires the exact random fixture value for a successful read; `experiment_verdict` requires both revoked-client and allowed-client probes for a clean result. `verify_service` checks the separate native manifest.
+
+The independent current-policy JSON is outside Raft storage and its hash is checked after each restore. Probes go directly to OpenBao; the policy is an oracle, not an enforcement proxy. The protected SQLite design is not claimed as native OpenBao protection. See [OPENBAO_INTEGRATION.md](OPENBAO_INTEGRATION.md) for the exact lifecycle and contract.
 
 ## Snapshot meaning
 
@@ -121,4 +132,4 @@ The reducer replaces a selected component checkpoint with C. It preserves the sp
 
 ## Deliberate limits
 
-Fixture time is fixed. Sessions are opaque references. No real expiry, JWT validation, network requests, asynchronous jobs, or distributed consistency is measured. Temporary SQLite stores use memory journaling and disabled durability syncing for speed; their behavior is not evidence about crash durability.
+SQLite fixture time is fixed and sessions are opaque references. Its path makes no network requests. The separate OpenBao path uses real local HTTP, service tokens and native storage; it does not test expiry, JWT validation, asynchronous consumers, HA, or distributed consistency. Temporary SQLite stores use memory journaling and disabled syncing for speed; neither path establishes crash durability.

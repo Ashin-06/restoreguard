@@ -1,13 +1,13 @@
 # Security scope and local operation
 
-RestoreGuard is an implemented defensive reference lab. It creates and restores its own fictional SQLite stores. It does not scan your accounts, restore production databases, or call identity/cloud services.
+RestoreGuard creates and restores its own fictional SQLite stores and, optionally, its own disposable OpenBao service. It does not scan accounts, attach to existing services, restore production databases or call cloud services.
 
 ## Current boundary
 
 - Component stores and snapshots are created in fresh temporary fixture directories.
 - The current policy journal and effect log are outside the component restore selection.
 - Users, documents, sessions, and key fingerprints are synthetic.
-- The experiment core performs no external network operations.
+- The SQLite core performs no network operations. Native requests use only the owned loopback OpenBao service.
 - The browser interface is a local development interface, not a deployed service.
 - Generated reports and fixture exports are written only to the selected output location.
 
@@ -15,7 +15,7 @@ The local interface should remain bound to loopback. Do not expose it as a share
 
 ## Data handling
 
-No real credential is needed or accepted by the core's supported experiment inputs. The synthetic hashes in the fixture are demonstration values and are not a secure secret-management design.
+No production credential is needed or accepted. SQLite hashes are demonstration values. The native adapter creates real short-lived tokens for its disposable synthetic fixture; root credentials and the unseal share are held transiently and omitted from text evidence.
 
 Reports can still contain local paths and experiment details. Inspect them before sharing. Do not replace fixture contents with production snapshots, customer records, passwords, unseal keys, or live sessions.
 
@@ -33,13 +33,15 @@ Losing current policy produces an inconclusive experiment. A restored system can
 
 ## What the experiment deliberately does not prove
 
-Sessions are opaque references under a fixed fixture clock. Key values are synthetic fingerprints. No JWT, encryption, production token expiry, network partition, distributed consistency, or external authorization server is evaluated.
+In SQLite, sessions are opaque under a fixed clock and keys are synthetic fingerprints. The native adapter evaluates actual OpenBao service-token authorization across Raft restores. It does not test JWTs, encryption correctness, expiry, partitions, distributed consistency or production systems.
 
 SQLite fixture stores use memory journals and disabled durability syncing. This choice makes temporary tests faster and excludes crash-durability claims.
 
 ## Future adapter boundary
 
-Real restored services may contact old credential consumers, webhooks, or scheduled tasks immediately after startup. That risk is relevant to future integrations, which require explicit isolation before restoring them. No such adapter is implemented in this prototype. See [INTEGRATION_ROADMAP.md](INTEGRATION_ROADMAP.md).
+Real restored services may contact old consumers or scheduled tasks. The delivered adapter creates a new service containing only synthetic KV state and tokens, uses loopback listeners, rejects foreign snapshots/endpoints and stops only its own process. It is not an OS sandbox or firewall. Extensions with consumers need additional isolation; see [INTEGRATION_ROADMAP.md](INTEGRATION_ROADMAP.md).
+
+Native `*.snap` evidence contains encrypted synthetic authentication state and should stay private. Credentials and unseal material are not exported; snapshots and local runs are ignored by Git. Share the sanitized result rather than raw snapshots. Clearing Python references is not secure memory erasure. The binary runs as the current OS user, so verify its official checksum before use. See [OPENBAO_INTEGRATION.md](OPENBAO_INTEGRATION.md).
 
 ## Claims and use
 

@@ -1,6 +1,6 @@
 # RestoreGuard — Backup Recovery Security Tester
 
-**Status: implemented local reference prototype.** The experiments use fictional accounts and three real SQLite fixture stores. This is not a production backup tool or an integration with Keycloak, Vault, or a cloud provider.
+**Status: implemented local reference prototype with a real disposable OpenBao integration.** The browser workbench uses three SQLite fixture stores. A separate native adapter starts OpenBao 2.7.1, captures and restores real Raft snapshots, and checks revoked and allowed service tokens. This is not a production backup tool.
 
 RestoreGuard answers a practical question: **can a backup restore bring back access that was deliberately removed?**
 
@@ -16,7 +16,7 @@ python -m restoreguard serve --port 8766 --runs-dir runs
 
 Open [http://127.0.0.1:8766](http://127.0.0.1:8766). Keep the terminal open; press Ctrl+C there to stop the server. On Windows, `./Start-RestoreGuard.ps1` finds a compatible Python interpreter and starts the same foreground server. If your machine uses the Python launcher, substitute `py -3` for `python` in the commands.
 
-The runtime uses Python's standard library. No model API, Docker engine, database server, cloud account, or third-party Python package is required. Run from this directory; installation as a system service is not part of the prototype.
+The reference workbench uses Python's standard library. No model API, Docker engine, database server, cloud account, or third-party Python package is required for it. The optional native adapter also needs the official local OpenBao executable. Run from this directory; installation as a system service is not part of the prototype.
 
 ## What is implemented
 
@@ -29,6 +29,7 @@ The runtime uses Python's standard library. No model API, Docker engine, databas
 - A protected mode that checks current external revocations and reconciles secret state.
 - Failure reduction that preserves a specified finding and the allowed-user authorization control.
 - Six built-in seeded/control scenarios, a local browser interface, saved reports, and evidence integrity checking.
+- A native OpenBao Raft lifecycle with strict executable scenario JSON, repeated fresh processes, pre/post-revocation snapshots, independent current policy, verified restore completion, direct authorization controls, cleanup, and separate private evidence.
 
 A successful allowed-user probe is checked separately. A fixture that denies everybody cannot qualify as a safe recovery.
 
@@ -65,15 +66,24 @@ An incomplete matrix or unavailable evidence cannot establish a clean result. In
 
 ## What remains outside the implementation
 
-There are no production adapters, real JWT or cryptographic validation, distributed-system timing tests, restore-order permutations, arbitrary uploaded backup support, or production remediation. Sessions and keys are synthetic fixture values. SQLite durability syncing is disabled in disposable experiment stores, so crash recovery is not being measured.
+The real-service workflow is described in [OPENBAO_INTEGRATION.md](OPENBAO_INTEGRATION.md). From this checkout, with the separately verified binary available:
 
-`examples/lab-config.json` and `examples/scenarios.json` are retained **design specifications** for a future configuration/scenario language. The current runner uses a built-in catalogue and does not load those two files. `examples/measured-validation.json` and `examples/sample-run/` contain actual generated reference results. See [INTEGRATION_ROADMAP.md](INTEGRATION_ROADMAP.md) for the preserved Keycloak/Vault/Docker design.
+~~~powershell
+python -m restoreguard openbao --config examples/openbao-local.json --executable "../.lab/runtimes/openbao-2.7.1/bin/bao.exe" --output-dir service-runs
+~~~
+
+Replace the executable path on another machine. The adapter creates its own disposable loopback service. The supplied catalogue expects an old snapshot to revive a revoked token and a post-revocation snapshot to keep it denied, with legitimate access checked in both states. For this command, `status: PASS` and exit 0 mean all configured expectations matched; `security_status` and each `observed_outcome` record actual security findings. Verify its separate private evidence with `python -m restoreguard verify-service <native-run-directory>`.
+
+There are no production adapters, Keycloak integration, JWT tests, distributed-system timing tests, restore-order permutations, arbitrary uploaded backup support, or production remediation. SQLite sessions and key fingerprints are synthetic; the native integration uses actual OpenBao service tokens. SQLite durability syncing is disabled in disposable experiment stores, so crash recovery is not being measured. The native adapter covers only single-node Raft service-token revocation recovery, not the full SQLite matrix or protected-mode remediation.
+
+`examples/openbao-local.json` is an executable, strictly validated native scenario configuration. `examples/lab-config.json` and `examples/scenarios.json` remain **design specifications** for a broader language and are not executed. `examples/measured-validation.json` and `examples/sample-run/` contain actual generated SQLite reference results; `examples/openbao-validation.json` records a sanitized native result. See [INTEGRATION_ROADMAP.md](INTEGRATION_ROADMAP.md) for the remaining Keycloak/Vault/Docker design.
 
 ## Project guide
 
 | Document | What it explains |
 |---|---|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Actual components, code structure, and trust boundaries |
+| [OPENBAO_INTEGRATION.md](OPENBAO_INTEGRATION.md) | Real OpenBao setup, strict input, native restore workflow and limits |
 | [WORKFLOW.md](WORKFLOW.md) | A complete recovery experiment and interpretation |
 | [DATA_CONTRACTS.md](DATA_CONTRACTS.md) | Runtime result fields and design-only example inputs |
 | [EVALUATION.md](EVALUATION.md) | Reproducible checks, expected scenarios, and coverage limits |
@@ -85,11 +95,11 @@ There are no production adapters, real JWT or cryptographic validation, distribu
 
 ## Contribution and prior art
 
-The contribution is the concrete reference implementation: physical component snapshots, a bounded recovery matrix, independent security intent, repeatable effect checks, and a reduced reproduction. Backup-related access resurrection itself is not a new discovery.
+The contribution is the concrete implementation: physical component snapshots, a bounded recovery matrix, independent security intent, repeatable effect checks, a reduced reference reproduction, and a versioned native OpenBao recovery experiment. Backup-related access resurrection itself is not a new discovery.
 
 - [Microsoft Key Vault backup documentation](https://learn.microsoft.com/en-us/azure/key-vault/general/backup) describes independent restored key copies.
 - [HashiCorp Vault snapshot restoration](https://developer.hashicorp.com/vault/docs/sysadmin/snapshots/restore) explains why restore tests must be isolated.
 - [Pomerium recovery testing guidance](https://www.pomerium.com/learn/guides/test-backup-restore-and-clean-rebuild) includes verifying that old authority remains rejected.
 - [Recovery Admission Lab author report](https://digitalthoughtdisruption.com/2026/09/19/restoring-state-must-not-restore-authority-independent-recovery-admission-for-ai-agents/) describes related authority-rollback experiments. Its complete lab was unavailable for download when reviewed, so its reported results were not independently reproduced here.
 
-This project makes no “first ever” claim and does not demonstrate a flaw in an external product. The core does not use AI.
+This project makes no “first ever” claim. The native experiment measures expected restoration of historical authorization state, not a new external-product vulnerability. The core does not use AI.

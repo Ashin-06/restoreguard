@@ -1,0 +1,197 @@
+{
+  "schema_version": "restoreguard.openbao.v1",
+  "created_at": "2026-10-11T06:03:00.446028+00:00",
+  "adapter": "openbao-raft",
+  "runtime": {
+    "product": "OpenBao",
+    "version": "2.7.1",
+    "sha256": "b985ff8c559c16e763e517a3b2abd14f9e7e0f88fda4e440fe84273d9abaeacd"
+  },
+  "config": {
+    "schema_version": "restoreguard.openbao.v1",
+    "adapter": "openbao-raft",
+    "expected_version": "2.7.1",
+    "repeats": 2,
+    "startup_timeout_seconds": 30,
+    "request_timeout_seconds": 10,
+    "scenarios": [
+      {
+        "id": "OB001",
+        "restore_checkpoint": "before_revocation",
+        "expected_outcome": "FAIL"
+      },
+      {
+        "id": "OB002",
+        "restore_checkpoint": "after_revocation",
+        "expected_outcome": "PASS"
+      }
+    ]
+  },
+  "status": "PASS",
+  "security_status": "FAIL",
+  "complete": true,
+  "results": [
+    {
+      "id": "OB001",
+      "restore_checkpoint": "before_revocation",
+      "expected_outcome": "FAIL",
+      "repeat": 1,
+      "observed_outcome": "FAIL",
+      "expectation_matched": true,
+      "positive_control_passed": true,
+      "independent_policy_sha256": "5807c62b21c3f49b4eb68d1b9ac520d5509afd0edb937c26ce3bf51b07709080",
+      "snapshot": {
+        "file": "before_revocation.snap",
+        "bytes": 25625,
+        "sha256": "13a547fe3e233b6fd6942ceb91325b9b283fd81c71719db64fb7ed22ded9dc39"
+      },
+      "probes": [
+        {
+          "actor": "revoked-client",
+          "resource": "restoreguard/data/fixture",
+          "action": "read",
+          "expected": "deny",
+          "transport_status": 200,
+          "fixture_value_returned": true,
+          "observed": "allowed",
+          "status": "FAIL"
+        },
+        {
+          "actor": "allowed-client",
+          "resource": "restoreguard/data/fixture",
+          "action": "read",
+          "expected": "allow",
+          "transport_status": 200,
+          "fixture_value_returned": true,
+          "observed": "allowed",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "OB002",
+      "restore_checkpoint": "after_revocation",
+      "expected_outcome": "PASS",
+      "repeat": 1,
+      "observed_outcome": "PASS",
+      "expectation_matched": true,
+      "positive_control_passed": true,
+      "independent_policy_sha256": "5807c62b21c3f49b4eb68d1b9ac520d5509afd0edb937c26ce3bf51b07709080",
+      "snapshot": {
+        "file": "after_revocation.snap",
+        "bytes": 23577,
+        "sha256": "f4be24a480f31b717f3f87e7263d338585bace032d1dda9414e1c6aec4813ed7"
+      },
+      "probes": [
+        {
+          "actor": "revoked-client",
+          "resource": "restoreguard/data/fixture",
+          "action": "read",
+          "expected": "deny",
+          "transport_status": 403,
+          "fixture_value_returned": false,
+          "observed": "denied",
+          "status": "PASS"
+        },
+        {
+          "actor": "allowed-client",
+          "resource": "restoreguard/data/fixture",
+          "action": "read",
+          "expected": "allow",
+          "transport_status": 200,
+          "fixture_value_returned": true,
+          "observed": "allowed",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "OB001",
+      "restore_checkpoint": "before_revocation",
+      "expected_outcome": "FAIL",
+      "repeat": 2,
+      "observed_outcome": "FAIL",
+      "expectation_matched": true,
+      "positive_control_passed": true,
+      "independent_policy_sha256": "5807c62b21c3f49b4eb68d1b9ac520d5509afd0edb937c26ce3bf51b07709080",
+      "snapshot": {
+        "file": "before_revocation.snap",
+        "bytes": 25625,
+        "sha256": "6ee29ac92b2ab48d89426b27e9a8153a3334a55e535f89615f3edacf90e39925"
+      },
+      "probes": [
+        {
+          "actor": "revoked-client",
+          "resource": "restoreguard/data/fixture",
+          "action": "read",
+          "expected": "deny",
+          "transport_status": 200,
+          "fixture_value_returned": true,
+          "observed": "allowed",
+          "status": "FAIL"
+        },
+        {
+          "actor": "allowed-client",
+          "resource": "restoreguard/data/fixture",
+          "action": "read",
+          "expected": "allow",
+          "transport_status": 200,
+          "fixture_value_returned": true,
+          "observed": "allowed",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "OB002",
+      "restore_checkpoint": "after_revocation",
+      "expected_outcome": "PASS",
+      "repeat": 2,
+      "observed_outcome": "PASS",
+      "expectation_matched": true,
+      "positive_control_passed": true,
+      "independent_policy_sha256": "5807c62b21c3f49b4eb68d1b9ac520d5509afd0edb937c26ce3bf51b07709080",
+      "snapshot": {
+        "file": "after_revocation.snap",
+        "bytes": 23577,
+        "sha256": "99b6fa022a329398246933aa5b9f376d382994794e2164f8ad1c6b8b56a1573a"
+      },
+      "probes": [
+        {
+          "actor": "revoked-client",
+          "resource": "restoreguard/data/fixture",
+          "action": "read",
+          "expected": "deny",
+          "transport_status": 403,
+          "fixture_value_returned": false,
+          "observed": "denied",
+          "status": "PASS"
+        },
+        {
+          "actor": "allowed-client",
+          "resource": "restoreguard/data/fixture",
+          "action": "read",
+          "expected": "allow",
+          "transport_status": 200,
+          "fixture_value_returned": true,
+          "observed": "allowed",
+          "status": "PASS"
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "limitations": [
+    "Owned loopback-only single-node service; no production/existing endpoint support.",
+    "Only restricted service-token revocation and two native Raft checkpoints are covered.",
+    "Snapshot rollback is expected historical-state behavior, not a new product vulnerability claim.",
+    "Current policy is an independent oracle; it does not enforce or repair native access.",
+    "No HA, Keycloak, JWT, remote storage, crashes, token expiry, or cross-product restore matrix.",
+    "Root token, probe tokens, and unseal share are discarded; raw snapshots contain encrypted synthetic state.",
+    "Unsigned manifests check integrity relative to the manifest, not authenticity."
+  ],
+  "verified_restore_barriers": 4,
+  "owned_processes_started": 2,
+  "owned_processes_stopped": 2,
+  "source": "Actual native release run; raw synthetic snapshots remain in the private local output directory."
+}

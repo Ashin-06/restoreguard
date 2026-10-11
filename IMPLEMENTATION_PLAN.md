@@ -1,6 +1,6 @@
 # Delivered scope and next milestones
 
-The local reference prototype is implemented. The original larger product design remains a roadmap, not a claim that production integrations have been completed.
+The local reference prototype and one bounded real OpenBao integration are implemented. The larger product design remains a roadmap; production integrations are not claimed.
 
 ## Delivered reference layer
 
@@ -8,7 +8,11 @@ The core builds separate identity, permissions, and secrets SQLite stores, captu
 
 The built-in matrix, protected/vulnerable modes, repeated trials, six scenario checks, and finding-preserving reduction provide a small reproducible basis for demonstrating recovery-security failures. The command-line entry point, local interface, and evidence workflow make the experiments reviewable.
 
-The current runtime uses a fixed catalogue. A general JSON scenario interpreter, customer adapters, and arbitrary backup import are not delivered.
+The SQLite runtime uses a fixed catalogue. Native OpenBao scenarios use the strict executable `restoreguard.openbao.v1` format. A general JSON operation interpreter, customer adapters and arbitrary backup import are not delivered.
+
+## Delivered native integration
+
+OpenBao 2.7.1 runs in an owned disposable Raft process. The adapter verifies restricted-token revocation and legitimate access, captures two native snapshots, verifies restore completion with a checkpoint barrier and probes actual KV reads against independent current intent. Repeated fresh instances, redacted evidence, verification, cleanup and a real integration test are delivered. See [OPENBAO_INTEGRATION.md](OPENBAO_INTEGRATION.md).
 
 ## Reproduction gate
 
@@ -24,13 +28,13 @@ A hash manifest alone is not a cryptographic attestation of execution. A future 
 
 ## Next milestone — external adapters
 
-Implement one version-pinned real product adapter at a time. Keycloak and Vault/OpenBao are candidate directions, not supported targets today. The required work includes safe fixture creation, supported snapshot procedures, health checks, real access effects, cleanup, and strict network isolation.
+Add one pinned product or scenario family at a time. Keycloak and independently tested Vault compatibility remain candidates. Broader OpenBao identity, rotation, downstream lease and HA behavior remains uncovered. Each addition needs supported snapshots, health checks, real effects, cleanup and appropriate isolation.
 
 Completion requires a reproducible integration test against the named version and configuration. Keep any product finding separate from seeded application mistakes.
 
 ## Next milestone — declarative scenario input
 
-The `examples/` files preserve a proposed schema. Supporting them requires a real loader, strict validation, typed operations, capability limits, adapter allowlists, and meaningful malformed-input tests. Do not add arbitrary code evaluation or shell execution to make sample descriptions runnable.
+The older `lab-config.json` and `scenarios.json` preserve a broad proposal. The narrower `openbao-local.json` format is executable and strictly validated. A broader language still needs typed operations, bounds, allowlists and malformed-input tests without arbitrary code or shell execution.
 
 ## Next milestone — additional recovery dimensions
 
@@ -44,6 +48,6 @@ An AI explanation feature can summarize a classified finding and cite its observ
 
 ## Portfolio and product claims
 
-A portfolio can demonstrate implemented SQLite snapshots, seeded failures, protected controls, evidence exports, and bounded reduction. A customer-facing product needs supported adapters, deployment controls, maintenance, privacy handling, and validation with actual operator workflows.
+A portfolio can demonstrate SQLite snapshots, seeded failures, protected controls, evidence exports, bounded reduction and native OpenBao restore/token probes. A customer-facing product needs broader adapters, deployment controls, maintenance, privacy handling and actual operator validation.
 
 See [INTEGRATION_ROADMAP.md](INTEGRATION_ROADMAP.md) for the preserved extended architecture and [SECURITY_SCOPE.md](SECURITY_SCOPE.md) for the current boundary.

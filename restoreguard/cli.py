@@ -10,7 +10,7 @@ from .evidence import bundle_case, run_case, verify_case
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description='RestoreGuard synthetic recovery security lab')
+    parser = argparse.ArgumentParser(description='RestoreGuard reference and native recovery security lab')
     commands = parser.add_subparsers(dest='command', required=True)
     serve = commands.add_parser('serve', help='Open the local workbench server')
     serve.add_argument('--port', type=int, default=8766)
@@ -32,13 +32,27 @@ def main(argv=None):
     bundle = commands.add_parser('bundle', help='Export a verified run as a ZIP')
     bundle.add_argument('directory')
     bundle.add_argument('--output', required=True)
+    native = commands.add_parser('openbao', help='Run native Raft restores against a new disposable OpenBao process')
+    native.add_argument('--config', required=True, help='Strict executable native scenario JSON')
+    native.add_argument('--executable', required=True, help='Path to the official local bao/bao.exe binary')
+    native.add_argument('--output-dir', default='service-runs')
+    native_verify = commands.add_parser('verify-service', help='Verify native-service evidence integrity')
+    native_verify.add_argument('directory')
     args = parser.parse_args(argv)
     try:
         if args.command == 'serve':
             from .server import serve as start
             start(args.port, args.runs_dir)
             return 0
-        if args.command == 'matrix':
+        if args.command == 'openbao':
+            from .openbao import load_config, run_openbao
+            output = run_openbao(load_config(args.config), args.executable, args.output_dir)
+            status = output['status']
+        elif args.command == 'verify-service':
+            from .openbao import verify_service
+            output = verify_service(args.directory)
+            status = output['status']
+        elif args.command == 'matrix':
             output = run_case(args.output_dir, args.mode, args.budget, args.repeats)
             status = output['result']['status']
         elif args.command == 'minimize':

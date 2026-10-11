@@ -1,6 +1,6 @@
 # Runtime data contracts
 
-The runtime returns plain JSON-compatible dictionaries. The exact implementation is in `restoreguard/core.py`. `examples/lab-config.json` and `examples/scenarios.json` use a separate `0.1-design` specification and are **not loaded or executed by the current runner**. `examples/measured-validation.json` and `examples/sample-run/` contain actual generated reference results.
+The reference runtime returns plain dictionaries from `restoreguard/core.py`. The native adapter has a separate strict executable format in `restoreguard/openbao.py`, documented in [OPENBAO_INTEGRATION.md](OPENBAO_INTEGRATION.md). `examples/lab-config.json` and `examples/scenarios.json` use a separate `0.1-design` specification and are **not executed**. `examples/measured-validation.json` and `examples/sample-run/` contain actual generated reference results.
 
 ## Selection
 
@@ -81,4 +81,4 @@ Manifest verification can detect changed bytes relative to the manifest. It does
 
 `examples/lab-config.json` and `examples/scenarios.json` preserve the proposed future adapter/configuration language. Typed operations, scenario-file references, clock policies, and adapter IDs in those examples are specifications rather than accepted runtime inputs.
 
-Supporting that language would require a separately implemented strict loader and compatibility tests. Existing CLI options and the fixed catalogue are the supported inputs today.
+Supporting that broader language requires its own loader and tests. Current supported inputs are reference CLI options, the fixed SQLite catalogue and the separate `restoreguard.openbao.v1` JSON format.

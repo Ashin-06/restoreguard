@@ -1,6 +1,6 @@
 # Working through a recovery experiment
 
-The commands below operate only on generated fictional SQLite fixtures. They do not read your account permissions or restore another application's database.
+The numbered workflow below uses generated fictional SQLite fixtures. A separate real-service workflow is implemented in [OPENBAO_INTEGRATION.md](OPENBAO_INTEGRATION.md): it starts its own OpenBao instance, creates two restricted tokens, verifies revocation, restores native pre/post-revocation Raft snapshots, checks exact secret reads and positive controls, saves evidence and stops the process. It accepts no existing endpoint or production backup.
 
 ## 1. Start the local interface
 

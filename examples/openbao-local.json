@@ -1,0 +1,20 @@
+{
+  "schema_version": "restoreguard.openbao.v1",
+  "adapter": "openbao-raft",
+  "expected_version": "2.7.1",
+  "repeats": 2,
+  "startup_timeout_seconds": 30,
+  "request_timeout_seconds": 10,
+  "scenarios": [
+    {
+      "id": "OB001",
+      "restore_checkpoint": "before_revocation",
+      "expected_outcome": "FAIL"
+    },
+    {
+      "id": "OB002",
+      "restore_checkpoint": "after_revocation",
+      "expected_outcome": "PASS"
+    }
+  ]
+}
