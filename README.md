@@ -8,7 +8,7 @@ The prototype creates old and current snapshots, physically restores selected co
 
 ## Start the application
 
-From this project directory, with Python 3.10 or newer:
+From this project directory, with Python 3.12 or newer:
 
 ~~~powershell
 python -m restoreguard serve --port 8766 --runs-dir runs
@@ -78,6 +78,29 @@ There are no production adapters, Keycloak integration, JWT tests, distributed-s
 
 `examples/openbao-local.json` is an executable, strictly validated native scenario configuration. `examples/lab-config.json` and `examples/scenarios.json` remain **design specifications** for a broader language and are not executed. `examples/measured-validation.json` and `examples/sample-run/` contain actual generated SQLite reference results; `examples/openbao-validation.json` records a sanitized native result. See [INTEGRATION_ROADMAP.md](INTEGRATION_ROADMAP.md) for the remaining Keycloak/Vault/Docker design.
 
+## Running as a service
+
+The container image runs the same workbench in production mode, still with no third-party packages:
+
+```bash
+docker build -t restoreguard .
+python -m restoreguard.ops keygen            # one API key per person: analyst, viewer or monitor
+docker run -d --name restoreguard -p 8766:8766 -v restoreguard-data:/data \
+  -e RESTOREGUARD_KEYS_FILE=/run/secrets/restoreguard-keys.json -e RESTOREGUARD_ALLOWED_HOSTS=lab.example.org \
+  restoreguard
+```
+
+With API keys configured, every `/api` route needs a key (`X-API-Key` or `Authorization: Bearer`): `analyst` runs experiments, `viewer` opens saved runs and downloads, `monitor` reads `/metrics`. The page asks for the key once per browser session. `/healthz` and `/readyz` are open for probes; requests are rate-limited per client and logged as JSON lines with request IDs, without submitted content. See [docs/runbook.md](docs/runbook.md) and [docs/threat-model.md](docs/threat-model.md).
+
+| Variable | Purpose |
+|---|---|
+| `RESTOREGUARD_ENV=production` | refuse to start without hashed API keys |
+| `RESTOREGUARD_API_KEYS` / `RESTOREGUARD_KEYS_FILE` | hashed API keys with roles |
+| `RESTOREGUARD_HOST`, `RESTOREGUARD_PORT` | default `127.0.0.1:8766`; any other address needs API keys |
+| `RESTOREGUARD_ALLOWED_HOSTS` | host names clients use, besides loopback (DNS-rebinding protection) |
+| `RESTOREGUARD_DATA_DIR` | where runs are kept (default `./runs`, `/data` in the image) |
+| `RESTOREGUARD_RATE_LIMIT` | requests per minute per client (default 120) |
+
 ## Project guide
 
 | Document | What it explains |
@@ -103,3 +126,7 @@ The contribution is the concrete implementation: physical component snapshots, a
 - [Recovery Admission Lab author report](https://digitalthoughtdisruption.com/2026/09/19/restoring-state-must-not-restore-authority-independent-recovery-admission-for-ai-agents/) describes related authority-rollback experiments. Its complete lab was unavailable for download when reviewed, so its reported results were not independently reproduced here.
 
 This project makes no “first ever” claim. The native experiment measures expected restoration of historical authorization state, not a new external-product vulnerability. The core does not use AI.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
