@@ -17,3 +17,7 @@ reports/
 .pytest_cache/
 .DS_Store
 Thumbs.db
+.coverage
+coverage.xml
+.ruff_cache/
+probe-output/
