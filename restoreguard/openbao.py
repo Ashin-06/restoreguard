@@ -9,11 +9,13 @@ from contextlib import ExitStack
 from datetime import datetime, timezone
 import hashlib
 import html
+import http.client
 import json
 import os
 from pathlib import Path, PurePosixPath
 import re
 import socket
+import stat
 import subprocess
 import tempfile
 import time
@@ -27,6 +29,7 @@ SCHEMA = 'restoreguard.openbao.v1'
 CHECKPOINTS = ('before_revocation', 'after_revocation')
 RESOURCE = 'restoreguard/data/fixture'
 MAX_RESPONSE_BYTES = 32 * 1024 * 1024
+MAX_JSON_BYTES = 1024 * 1024
 
 
 class AdapterError(ValueError):
@@ -73,18 +76,30 @@ def validate_config(value):
     return json.loads(json.dumps(value))
 
 
-def load_config(path):
-    path = Path(path)
-    if path.stat().st_size > 64 * 1024:
-        raise ValueError('Configuration exceeds 64 KiB.')
+def _read_json(path, limit, label):
+    # Bound the actual read, not a preceding stat that can become stale.
+    with Path(path).open('rb') as stream:
+        encoded = stream.read(limit + 1)
+    if len(encoded) > limit:
+        raise ValueError(f'{label} exceeds its {limit}-byte limit.')
     def no_duplicates(pairs):
         value = {}
         for key, item in pairs:
             if key in value:
-                raise ValueError('Duplicate JSON key in configuration.')
+                raise ValueError(f'Duplicate JSON key in {label}.')
             value[key] = item
         return value
-    return validate_config(json.loads(path.read_text(encoding='utf-8-sig'), object_pairs_hook=no_duplicates))
+    def reject_constant(_):
+        raise ValueError('Non-finite JSON number.')
+    try:
+        return json.loads(encoded.decode('utf-8-sig'), object_pairs_hook=no_duplicates,
+                          parse_constant=reject_constant)
+    except (UnicodeError, RecursionError) as exc:
+        raise ValueError(f'{label} must contain bounded, valid UTF-8 JSON.') from exc
+
+
+def load_config(path):
+    return validate_config(_read_json(path, 64 * 1024, 'Configuration (64 KiB)'))
 
 
 def _clean_environment():
@@ -193,21 +208,35 @@ class OwnedOpenBao:
             raise
 
     def __exit__(self, *_):
-        if self.process is not None and self.process.poll() is None:
-            self.process.terminate()
-            try:
-                self.process.wait(timeout=10)
-            except subprocess.TimeoutExpired:
-                self.process.kill()
-                self.process.wait(timeout=10)
-        if self.process is not None:
-            self.trace.append({'event': 'owned_process_stopped', 'pid': self.process.pid,
-                               'returncode': self.process.returncode})
-        self.root_token = self.unseal_key = None
-        if self.cleanup is not None:
-            self.cleanup.close()
+        errors = []
+        try:
+            if self.process is not None and self.process.poll() is None:
+                try:
+                    self.process.terminate()
+                    self.process.wait(timeout=10)
+                except (OSError, subprocess.SubprocessError):
+                    # A failed gentle stop must still attempt the owned PID's
+                    # forced stop; never kill by executable name or port.
+                    self.process.kill()
+                    self.process.wait(timeout=10)
+            if self.process is not None:
+                self.trace.append({'event': 'owned_process_stopped', 'pid': self.process.pid,
+                                   'returncode': self.process.returncode})
+        except (OSError, subprocess.SubprocessError):
+            errors.append('Owned OpenBao process cleanup could not be confirmed.')
+            self.trace.append({'event': 'owned_process_cleanup_failed', 'pid': self.process.pid})
+        finally:
+            self.root_token = self.unseal_key = None
+            if self.cleanup is not None:
+                try:
+                    self.cleanup.close()
+                except OSError:
+                    errors.append('Temporary OpenBao storage cleanup could not be confirmed.')
+                    self.trace.append({'event': 'temporary_storage_cleanup_failed'})
+        if errors:
+            raise AdapterError(' '.join(errors))
 
-    def request(self, method, path, body=None, token=None, raw=False):
+    def request(self, method, path, body=None, token=None, raw=False, timeout=None):
         if self.process is None or self.process.poll() is not None:
             raise AdapterError('Owned OpenBao process exited; no external listener will be contacted.')
         headers = {'Content-Type': 'application/octet-stream' if raw else 'application/json'}
@@ -215,44 +244,65 @@ class OwnedOpenBao:
             headers['X-Vault-Token'] = token
         data = body if raw else (json.dumps(body).encode() if body is not None else None)
         request = urllib.request.Request(self.base_url + path, data=data, headers=headers, method=method)
+        budget = self.config['request_timeout_seconds'] if timeout is None else min(timeout, self.config['request_timeout_seconds'])
+        if budget <= 0:
+            raise AdapterError('Native API request deadline expired.')
+        deadline = time.monotonic() + budget
         try:
-            response = self.opener.open(request, timeout=self.config['request_timeout_seconds'])
-        except urllib.error.HTTPError as exc:
-            response = exc
-        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            try:
+                response = self.opener.open(request, timeout=budget)
+            except urllib.error.HTTPError as exc:
+                response = exc
+            with response:
+                blocks, size = [], 0
+                while True:
+                    if time.monotonic() >= deadline:
+                        raise AdapterError('Native API response deadline expired.')
+                    # read1 returns currently available buffered data. Reading
+                    # the whole response can hide a slow trickle indefinitely.
+                    block = response.read1(min(65536, MAX_RESPONSE_BYTES + 1 - size))
+                    if not block:
+                        break
+                    blocks.append(block)
+                    size += len(block)
+                    if size > MAX_RESPONSE_BYTES:
+                        raise AdapterError('Native response exceeds the 32 MiB disposable-lab limit.')
+                payload = b''.join(blocks)
+                status = response.status
+        except (urllib.error.URLError, TimeoutError, OSError, http.client.HTTPException) as exc:
             raise AdapterError('Native API request could not complete.') from exc
-        with response:
-            payload = response.read(MAX_RESPONSE_BYTES + 1)
-            status = response.status
-        if len(payload) > MAX_RESPONSE_BYTES:
-            raise AdapterError('Native response exceeds the 32 MiB disposable-lab limit.')
         self.trace.append({'event': 'http_response', 'method': method, 'path': path,
                            'status': status, 'response_bytes': len(payload)})
         if raw:
             return status, payload
         try:
             return status, json.loads(payload) if payload else {}
-        except (ValueError, UnicodeError) as exc:
+        except (ValueError, UnicodeError, RecursionError) as exc:
             raise AdapterError('Native API returned a non-JSON response.') from exc
 
-    def json_request(self, method, path, body=None, token=None):
-        code, payload = self.request(method, path, body, token)
+    def json_request(self, method, path, body=None, token=None, timeout=None):
+        code, payload = self.request(method, path, body, token, timeout=timeout)
         if not 200 <= code < 300 or not isinstance(payload, dict):
             raise AdapterError(f'Native API step {method} {path} failed with HTTP {code}.')
         return payload
 
-    def wait_for(self, path, condition, token=None):
+    def wait_for(self, path, condition, token=None, unseal_if_needed=False):
         deadline = time.monotonic() + self.config['startup_timeout_seconds']
         while time.monotonic() < deadline:
             if self.process.poll() is not None:
                 raise AdapterError('Owned OpenBao exited before readiness; check binary/runtime compatibility.')
             try:
-                code, body = self.request('GET', path, token=token)
+                if unseal_if_needed:
+                    code, body = self.request('GET', 'sys/seal-status', timeout=deadline - time.monotonic())
+                    if code == 200 and isinstance(body, dict) and body.get('sealed') is True:
+                        self.json_request('POST', 'sys/unseal', {'key': self.unseal_key},
+                                          timeout=deadline - time.monotonic())
+                code, body = self.request('GET', path, token=token, timeout=deadline - time.monotonic())
                 if isinstance(body, dict) and condition(code, body):
                     return body
             except AdapterError:
                 pass
-            time.sleep(0.15)
+            time.sleep(max(0, min(0.15, deadline - time.monotonic())))
         raise AdapterError('Owned OpenBao did not become ready within the configured deadline.')
 
     def snapshot(self, path):
@@ -262,25 +312,28 @@ class OwnedOpenBao:
         Path(path).write_bytes(payload)
         return {'file': Path(path).name, 'bytes': len(payload), 'sha256': hashlib.sha256(payload).hexdigest()}
 
-    def restore(self, path, checkpoint):
+    def restore(self, path, checkpoint, expected_sha256):
+        path = Path(path)
+        if _linked(path) or path.stat().st_size > MAX_RESPONSE_BYTES:
+            raise AdapterError('Native snapshot is linked or exceeds the supported size.')
+        with path.open('rb') as stream:
+            snapshot = stream.read(MAX_RESPONSE_BYTES + 1)
+        if len(snapshot) > MAX_RESPONSE_BYTES or hashlib.sha256(snapshot).hexdigest() != expected_sha256:
+            raise AdapterError('Native snapshot changed after capture; restore refused.')
         # A native restore may return before recovery completes. A fresh barrier
         # value must disappear and the snapshot's distinct marker must return.
         self.json_request('POST', 'restoreguard/data/checkpoint',
                           {'data': {'checkpoint': 'restore-barrier-' + uuid.uuid4().hex}}, self.root_token)
-        status, _ = self.request('POST', 'sys/storage/raft/snapshot', Path(path).read_bytes(), self.root_token, raw=True)
+        status, _ = self.request('POST', 'sys/storage/raft/snapshot', snapshot, self.root_token, raw=True)
         if status not in (200, 204):
             raise AdapterError(f'Native snapshot restore returned HTTP {status}.')
         # A restore can seal the same instance; only this initialization's share
         # may be used. Force-restore and foreign snapshots are never supported.
-        seal = self.wait_for('sys/seal-status', lambda code, body: code == 200)
-        if seal.get('sealed'):
-            self.json_request('POST', 'sys/unseal', {'key': self.unseal_key})
-        self.wait_for('sys/health', lambda code, body: code == 200 and body.get('sealed') is False)
         def checkpoint_matches(code, body):
             data = body.get('data')
             value = data.get('data') if isinstance(data, dict) else None
             return code == 200 and isinstance(value, dict) and value.get('checkpoint') == checkpoint
-        self.wait_for('restoreguard/data/checkpoint', checkpoint_matches, token=self.root_token)
+        self.wait_for('restoreguard/data/checkpoint', checkpoint_matches, token=self.root_token, unseal_if_needed=True)
         self.trace.append({'event': 'restored_checkpoint_verified', 'checkpoint': checkpoint})
 
 
@@ -309,6 +362,10 @@ def _run_repetition(executable, config, directory, repeat, trace, results):
     with OwnedOpenBao(executable, config, trace) as service:
         root = service.root_token
         service.json_request('POST', 'sys/mounts/restoreguard', {'type': 'kv', 'options': {'version': '2'}}, root)
+        # Mount creation can return before KV's versioned backend is ready.
+        # Read its native configuration before issuing any fixture writes.
+        service.wait_for('restoreguard/config',
+                         lambda code, body: code == 200 and isinstance(body.get('data'), dict), token=root)
         service.json_request('POST', 'sys/policies/acl/restoreguard-read',
                              {'policy': 'path "restoreguard/data/fixture" { capabilities = ["read"] }'}, root)
         service.json_request('POST', RESOURCE, {'data': {'marker': marker}}, root)
@@ -334,7 +391,7 @@ def _run_repetition(executable, config, directory, repeat, trace, results):
         metadata[CHECKPOINTS[1]] = service.snapshot(snapshots / 'after_revocation.snap')
         for scenario in config['scenarios']:
             checkpoint = scenario['restore_checkpoint']
-            service.restore(snapshots / f'{checkpoint}.snap', checkpoint)
+            service.restore(snapshots / f'{checkpoint}.snap', checkpoint, metadata[checkpoint]['sha256'])
             if sha256(journal_path) != journal_hash:
                 raise AdapterError('Independent policy changed during restore; result cannot be trusted.')
             probes = _probe_pair(service, tokens, marker, journal['expectations'])
@@ -376,13 +433,13 @@ def run_openbao(config, executable, output_dir='service-runs'):
     try:
         for repeat in range(1, config['repeats'] + 1):
             _run_repetition(executable, config, directory, repeat, trace, results)
-    except (AdapterError, OSError, KeyError, TypeError, subprocess.SubprocessError) as exc:
+    except (AdapterError, OSError, KeyError, IndexError, TypeError, subprocess.SubprocessError) as exc:
         # Native HTTP response bodies, tokens, and key material are never exposed.
         errors.append(str(exc) if isinstance(exc, AdapterError) else 'Native lifecycle failed (' + type(exc).__name__ + ').')
     complete = not errors and len(results) == config['repeats'] * len(config['scenarios'])
     outcomes = [result['observed_outcome'] for result in results]
     security = 'FAIL' if 'FAIL' in outcomes else ('PASS' if complete and all(value == 'PASS' for value in outcomes) else 'INCONCLUSIVE')
-    status = ('PASS' if all(result['expectation_matched'] for result in results) else 'FAIL') if complete else 'INCONCLUSIVE'
+    status = ('PASS' if all(result['expectation_matched'] for result in results) else 'FAIL') if complete and 'INCONCLUSIVE' not in outcomes else 'INCONCLUSIVE'
     case = {'schema_version': SCHEMA, 'case_id': case_id, 'created_at': datetime.now(timezone.utc).isoformat(),
             'adapter': 'openbao-raft', 'runtime': runtime, 'config': config,
             'status': status, 'security_status': security, 'complete': complete,
@@ -404,9 +461,15 @@ def run_openbao(config, executable, output_dir='service-runs'):
 
 
 def verify_service(directory):
-    directory = Path(directory).resolve()
     try:
-        manifest = json.loads((directory / 'manifest.json').read_text(encoding='utf-8'))
+        directory = Path(directory).absolute()
+        if _linked(directory) or not directory.is_dir():
+            raise ValueError('Native evidence directory must be an ordinary local directory.')
+        directory = directory.resolve()
+        manifest_path = directory / 'manifest.json'
+        if _linked(manifest_path):
+            raise ValueError('Native evidence manifest must not be a link.')
+        manifest = _read_json(manifest_path, MAX_JSON_BYTES, 'Native manifest')
         expected = manifest.get('files')
         if manifest.get('schema_version') != SCHEMA or manifest.get('algorithm') != 'sha256' or not isinstance(expected, dict):
             raise ValueError('Invalid native evidence manifest.')
@@ -416,17 +479,43 @@ def verify_service(directory):
         for name, digest in expected.items():
             relative = PurePosixPath(name)
             if (relative.is_absolute() or '..' in relative.parts or '\\' in name or ':' in name
-                    or not relative.parts or name == 'manifest.json'):
+                    or not relative.parts or name == 'manifest.json' or relative.as_posix() != name
+                    or any(part.rstrip(' .') != part for part in relative.parts)):
                 errors.append('Unsafe manifest path: ' + name)
                 continue
             path = directory.joinpath(*relative.parts)
-            if path.is_symlink() or not path.resolve().is_relative_to(directory):
+            if any(_linked(directory.joinpath(*relative.parts[:length])) for length in range(1, len(relative.parts) + 1)) or not path.resolve().is_relative_to(directory):
                 errors.append('Unsafe evidence path: ' + name)
-            elif not path.is_file() or not isinstance(digest, str) or sha256(path) != digest:
+            elif not path.is_file() or not isinstance(digest, str) or not re.fullmatch('[0-9a-f]{64}', digest) or sha256(path) != digest:
                 errors.append('Missing or changed evidence: ' + name)
+        for path in directory.rglob('*'):
+            if _linked(path):
+                errors.append('Linked evidence entry: ' + path.relative_to(directory).as_posix())
         actual = {p.relative_to(directory).as_posix() for p in directory.rglob('*')
                   if p.is_file() and p != directory / 'manifest.json'}
         errors.extend('Unexpected evidence: ' + name for name in sorted(actual - set(expected)))
+        if not errors:
+            case = _read_json(directory / 'service.json', MAX_JSON_BYTES, 'Native result')
+            if not isinstance(case, dict) or case.get('schema_version') != SCHEMA or type(case.get('complete')) is not bool:
+                raise ValueError('Invalid native result contract.')
+            if case['complete']:
+                configuration = validate_config(case.get('config'))
+                required = {f'repeat-{repeat}/{name}'
+                            for repeat in range(1, configuration['repeats'] + 1)
+                            for name in ('current-policy.json', 'before_revocation.snap', 'after_revocation.snap')}
+                if not required.issubset(expected):
+                    raise ValueError('Complete native run omits required snapshot or policy evidence.')
+                if not isinstance(case.get('results'), list) or len(case['results']) != configuration['repeats'] * len(configuration['scenarios']):
+                    raise ValueError('Complete native run has an incomplete result catalogue.')
         return {'status': 'FAIL' if errors else 'PASS', 'checked_files': len(expected), 'errors': errors}
     except (OSError, ValueError, TypeError, AttributeError) as exc:
         return {'status': 'FAIL', 'checked_files': 0, 'errors': [str(exc)]}
+
+
+def _linked(path):
+    """Reject symbolic links and Windows junction/reparse points without following them."""
+    try:
+        metadata = Path(path).lstat()
+        return stat.S_ISLNK(metadata.st_mode) or bool(getattr(metadata, 'st_file_attributes', 0) & 0x400)
+    except FileNotFoundError:
+        return False

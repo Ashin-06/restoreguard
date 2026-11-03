@@ -4,19 +4,23 @@ Set RESTOREGUARD_OPENBAO_EXE to the verified local bao binary to run the
 integration class. It always starts and destroys its own loopback instance.
 """
 
-import copy
 import hashlib
+import http.client
+import io
 import json
 import os
 from pathlib import Path
 import subprocess
 import tempfile
 import unittest
-from unittest.mock import Mock, patch
+from contextlib import redirect_stderr, redirect_stdout
+from unittest.mock import MagicMock, Mock, patch
 
 from restoreguard.openbao import (AdapterError, OwnedOpenBao, _clean_environment,
                                   classify_read, experiment_verdict, inspect_executable,
                                   load_config, run_openbao, validate_config, verify_service)
+from restoreguard.cli import main
+from restoreguard.evidence import sha256, write_json
 
 
 PROJECT = Path(__file__).resolve().parents[1]
@@ -181,6 +185,152 @@ class NativeOracleTests(unittest.TestCase):
             result = verify_service(directory)
             self.assertEqual(result['status'], 'FAIL')
             self.assertTrue(any('Unsafe' in error for error in result['errors']))
+
+
+class NativeHardeningTests(unittest.TestCase):
+    def service(self):
+        service = OwnedOpenBao(Path('bao'), config(), [])
+        service.process = Mock()
+        service.process.poll.return_value = None
+        service.base_url = 'http://127.0.0.1:12345/v1/'
+        return service
+
+    def failed_case(self, directory):
+        with patch('restoreguard.openbao.inspect_executable', return_value=(Path('bao'), {'version': '2.7.1'})), \
+             patch('restoreguard.openbao._run_repetition', side_effect=AdapterError('Deliberate fixture failure.')):
+            return run_openbao(config(), 'bao', directory)
+
+    def test_invalid_utf8_and_deep_json_return_cli_error_without_traceback(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'config.json'
+            for payload in (b'\xff', b'[' * 2000 + b']' * 2000, b'{"value":NaN}'):
+                path.write_bytes(payload)
+                with self.subTest(payload=payload[:8]), redirect_stderr(io.StringIO()) as error:
+                    code = main(['openbao', '--config', str(path), '--executable', 'unused'])
+                self.assertEqual(code, 2)
+                self.assertNotIn('Traceback', error.getvalue())
+
+    def test_body_disconnect_is_sanitized_and_response_closed(self):
+        service = self.service()
+        response = MagicMock()
+        response.__enter__.return_value = response
+        response.read1.side_effect = http.client.IncompleteRead(b'private-test-token')
+        service.opener = Mock()
+        service.opener.open.return_value = response
+        with self.assertRaises(AdapterError) as error:
+            service.request('GET', 'sys/init')
+        self.assertNotIn('private-test-token', str(error.exception))
+        response.__exit__.assert_called_once()
+
+    def test_trickling_response_is_stopped_by_body_deadline(self):
+        service = self.service()
+        response = MagicMock()
+        response.__enter__.return_value = response
+        response.read1.return_value = b'one-byte-at-a-time'
+        service.opener = Mock()
+        service.opener.open.return_value = response
+        with patch('restoreguard.openbao.time.monotonic', side_effect=[0, 0, 2]):
+            with self.assertRaisesRegex(AdapterError, 'deadline'):
+                service.request('GET', 'sys/init', timeout=1)
+        self.assertEqual(response.read1.call_count, 1)
+
+    def test_readiness_passes_only_remaining_time_to_late_request(self):
+        service = self.service()
+        service.config['startup_timeout_seconds'] = 5
+        service.request = Mock(return_value=(200, {'ready': True}))
+        with patch('restoreguard.openbao.time.monotonic', side_effect=[0, 0, 4.5]):
+            service.wait_for('sys/health', lambda code, body: body['ready'])
+        self.assertEqual(service.request.call_args.kwargs['timeout'], 0.5)
+
+    def test_async_restore_sealing_is_unsealed_during_checkpoint_poll(self):
+        service = self.service()
+        service.unseal_key = 'private-share'
+        service.request = Mock(side_effect=[(200, {'sealed': False}), (503, {}),
+                                           (200, {'sealed': True}), (200, {}),
+                                           (200, {'ready': True})])
+        with patch('restoreguard.openbao.time.sleep'):
+            result = service.wait_for('restoreguard/data/checkpoint', lambda code, body: body.get('ready') is True,
+                                      token='private-root', unseal_if_needed=True)
+        self.assertTrue(result['ready'])
+        self.assertTrue(any(call.args[:2] == ('POST', 'sys/unseal') for call in service.request.call_args_list))
+
+    def test_cleanup_failure_still_clears_credentials_and_closes_storage(self):
+        service = self.service()
+        service.root_token = service.unseal_key = 'private-token'
+        service.process.terminate.side_effect = PermissionError('private-token')
+        service.process.kill.side_effect = PermissionError('private-token')
+        service.cleanup = Mock()
+        with self.assertRaises(AdapterError) as error:
+            service.__exit__(None, None, None)
+        self.assertNotIn('private-token', str(error.exception))
+        self.assertIsNone(service.root_token)
+        self.assertIsNone(service.unseal_key)
+        service.cleanup.close.assert_called_once()
+        service.process.kill.assert_called_once()
+        self.assertEqual(service.trace[0]['event'], 'owned_process_cleanup_failed')
+        self.assertFalse(any(item['event'] == 'owned_process_stopped' for item in service.trace))
+
+    def test_changed_snapshot_is_refused_before_any_native_write(self):
+        service = self.service()
+        service.request = Mock()
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'old.snap'
+            path.write_bytes(b'original')
+            digest = sha256(path)
+            path.write_bytes(b'modified')
+            with self.assertRaisesRegex(AdapterError, 'changed after capture'):
+                service.restore(path, 'before_revocation', digest)
+        service.request.assert_not_called()
+
+    def test_complete_manifest_cannot_omit_native_snapshots_or_policy(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = self.failed_case(tmp)
+            directory = Path(result['directory'])
+            result['complete'] = True
+            write_json(directory / 'service.json', result)
+            manifest = json.loads((directory / 'manifest.json').read_text(encoding='utf-8'))
+            manifest['files']['service.json'] = sha256(directory / 'service.json')
+            write_json(directory / 'manifest.json', manifest)
+            verified = verify_service(directory)
+            self.assertEqual(verified['status'], 'FAIL')
+            self.assertIn('snapshot or policy', ' '.join(verified['errors']))
+
+    def test_linked_manifest_and_noncanonical_paths_are_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(self.failed_case(tmp)['directory'])
+            with patch('restoreguard.openbao._linked', side_effect=lambda path: Path(path).name == 'manifest.json'):
+                self.assertEqual(verify_service(directory)['status'], 'FAIL')
+            manifest = json.loads((directory / 'manifest.json').read_text(encoding='utf-8'))
+            manifest['files']['./service.json'] = manifest['files']['service.json']
+            write_json(directory / 'manifest.json', manifest)
+            self.assertTrue(any('Unsafe manifest' in error for error in verify_service(directory)['errors']))
+
+    def test_duplicate_and_oversized_manifest_are_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(self.failed_case(tmp)['directory'])
+            for payload in (b'{"files":{},"files":{}}', b' ' * (1024 * 1024 + 1)):
+                (directory / 'manifest.json').write_bytes(payload)
+                self.assertEqual(verify_service(directory)['status'], 'FAIL')
+
+    def test_unknown_native_observation_returns_inconclusive_suite(self):
+        def unknown(executable, configuration, directory, repeat, trace, results):
+            for scenario in configuration['scenarios']:
+                results.append({**scenario, 'repeat': repeat, 'observed_outcome': 'INCONCLUSIVE',
+                                'expectation_matched': False, 'positive_control_passed': False})
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch('restoreguard.openbao.inspect_executable', return_value=(Path('bao'), {'version': '2.7.1'})), \
+                 patch('restoreguard.openbao._run_repetition', side_effect=unknown):
+                result = run_openbao(config(), 'bao', tmp)
+            self.assertEqual(result['status'], 'INCONCLUSIVE')
+            self.assertEqual(result['security_status'], 'INCONCLUSIVE')
+
+    def test_cli_distinguishes_expected_failure_mismatch_and_unknown(self):
+        for status, code in [('PASS', 0), ('FAIL', 1), ('INCONCLUSIVE', 2)]:
+            with self.subTest(status=status), patch('restoreguard.openbao.run_openbao', return_value={
+                    'status': status, 'security_status': 'FAIL'}), redirect_stdout(io.StringIO()):
+                observed = main(['openbao', '--config', str(PROJECT / 'examples' / 'openbao-local.json'),
+                                 '--executable', 'unused'])
+            self.assertEqual(observed, code)
 
 
 @unittest.skipUnless(os.environ.get('RESTOREGUARD_OPENBAO_EXE'), 'Set RESTOREGUARD_OPENBAO_EXE for the real disposable-service test.')
