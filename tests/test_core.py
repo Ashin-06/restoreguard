@@ -1,6 +1,5 @@
 """Recovery-oracle, matrix, minimization, and physical snapshot tests."""
 
-import copy
 import hashlib
 import itertools
 import json
